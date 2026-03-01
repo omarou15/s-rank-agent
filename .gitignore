@@ -1,0 +1,40 @@
+# ── Dependencies ──
+node_modules/
+.pnpm-store/
+
+# ── Build ──
+dist/
+.next/
+.turbo/
+out/
+
+# ── Environment ──
+.env
+.env.local
+.env.*.local
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Logs ──
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ── Testing ──
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# ── OS ──
+.DS_Store
+*.pem
+
+# ── Misc ──
+*.tsbuildinfo

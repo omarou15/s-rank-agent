@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --bg: #0A0A0F;
+  --surface: #12121A;
+  --card: #1A1A25;
+  --border: #2A2A3A;
+  --primary: #7C3AED;
+  --cyan: #06B6D4;
+  --green: #10B981;
+}
+
+body {
+  background-color: var(--bg);
+  color: #F1F5F9;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3A3A4A; }
+
+/* Code blocks */
+pre, code { font-family: "JetBrains Mono", "Fira Code", monospace; }

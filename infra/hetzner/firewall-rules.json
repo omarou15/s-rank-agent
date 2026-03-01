@@ -1,0 +1,26 @@
+{
+  "name": "s-rank-agent-server",
+  "rules": [
+    {
+      "direction": "in",
+      "protocol": "tcp",
+      "port": "22",
+      "source_ips": ["0.0.0.0/0", "::/0"],
+      "description": "SSH access (managed by S-Rank API)"
+    },
+    {
+      "direction": "in",
+      "protocol": "tcp",
+      "port": "443",
+      "source_ips": ["0.0.0.0/0", "::/0"],
+      "description": "HTTPS (for deployed apps)"
+    },
+    {
+      "direction": "in",
+      "protocol": "tcp",
+      "port": "80",
+      "source_ips": ["0.0.0.0/0", "::/0"],
+      "description": "HTTP (redirect to HTTPS)"
+    }
+  ]
+}
