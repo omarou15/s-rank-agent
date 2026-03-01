@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TRUST_LEVELS, PLAN_LIMITS } from "@s-rank/shared";
-import type { TrustLevel, Plan } from "@s-rank/shared";
+import { TRUST_LEVELS, PLAN_LIMITS } from "@/lib/shared";
+import type { TrustLevel, Plan } from "@/lib/shared";
 import { useApi } from "@/lib/hooks/use-api";
 import { useAppStore } from "@/lib/stores/app-store";
 

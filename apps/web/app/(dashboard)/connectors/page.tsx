@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CONNECTORS } from "@s-rank/shared";
+import { CONNECTORS } from "@/lib/shared";
 
 type Status = "connected" | "disconnected" | "error";
 

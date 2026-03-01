@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { ConnectorMeta } from "@s-rank/shared";
+import type { ConnectorMeta } from "@/lib/shared";
 
 interface ConnectorCardProps {
   connector: ConnectorMeta;

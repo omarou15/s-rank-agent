@@ -1,7 +1,7 @@
 "use client";
 
-import { TRUST_LEVELS } from "@s-rank/shared";
-import type { TrustLevel } from "@s-rank/shared";
+import { TRUST_LEVELS } from "@/lib/shared";
+import type { TrustLevel } from "@/lib/shared";
 
 interface TrustSliderProps {
   value: TrustLevel;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import type { ConnectorMeta } from "@s-rank/shared";
+import type { ConnectorMeta } from "@/lib/shared";
 
 interface ConnectModalProps {
   connector: ConnectorMeta;

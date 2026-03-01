@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SERVER_PLANS } from "@s-rank/shared";
+import { SERVER_PLANS } from "@/lib/shared";
 
 type Step = 1 | 2 | 3;
 

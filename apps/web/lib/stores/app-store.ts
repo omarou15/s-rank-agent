@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { TrustLevel, Plan } from "@s-rank/shared";
+import type { TrustLevel, Plan } from "@/lib/shared";
 
 interface AppStore {
   // User
