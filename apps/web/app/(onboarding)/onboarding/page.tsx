@@ -56,7 +56,7 @@ export default function OnboardingPage() {
 
   const finish = () => {
     localStorage.setItem("s-rank-onboarded", "true");
-    router.push("/chat");
+    router.push("/agent");
   };
 
   return (
