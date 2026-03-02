@@ -2,29 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 :root {
-  --bg: #0A0A0F;
-  --surface: #12121A;
-  --card: #1A1A25;
-  --border: #2A2A3A;
-  --primary: #7C3AED;
-  --cyan: #06B6D4;
-  --green: #10B981;
+  --bg: #000000;
+  --bg-glass: rgba(20, 20, 25, 0.72);
+  --bg-glass-light: rgba(255, 255, 255, 0.04);
+  --bg-glass-hover: rgba(255, 255, 255, 0.08);
+  --bg-glass-active: rgba(255, 255, 255, 0.12);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-glass-light: rgba(255, 255, 255, 0.12);
+  --border-glass-bright: rgba(255, 255, 255, 0.18);
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary: rgba(255, 255, 255, 0.3);
+  --accent: #0A84FF;
+  --accent-glow: rgba(10, 132, 255, 0.15);
+  --green: #30D158;
+  --red: #FF453A;
+  --orange: #FF9F0A;
+  --purple: #BF5AF2;
 }
 
 body {
   background-color: var(--bg);
-  color: #F1F5F9;
-  font-family: "Inter", system-ui, sans-serif;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--surface); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #3A3A4A; }
+/* Glass surface mixin via utility */
+.glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--border-glass);
+}
 
-/* Code blocks */
-pre, code { font-family: "JetBrains Mono", "Fira Code", monospace; }
+.glass-light {
+  background: var(--bg-glass-light);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--border-glass);
+}
+
+/* Scrollbar — ultra subtle */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* Code */
+pre, code { font-family: "JetBrains Mono", "SF Mono", "Fira Code", monospace; }
+
+/* Selection */
+::selection { background: rgba(10, 132, 255, 0.3); }
+
+/* Smooth transitions everywhere */
+* { transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }

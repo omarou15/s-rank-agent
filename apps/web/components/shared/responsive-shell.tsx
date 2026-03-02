@@ -42,44 +42,60 @@ export function ResponsiveShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex h-[100dvh] bg-[#0a0a0a] overflow-hidden">
+    <div className="flex h-[100dvh] overflow-hidden" style={{ background: "linear-gradient(145deg, #0a0a12 0%, #000000 50%, #060612 100%)" }}>
+      {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-[260px] bg-[#111111] flex flex-col transform transition-transform duration-300 ease-out
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      {/* Sidebar — Glass */}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-[260px] flex flex-col transform transition-transform duration-300 ease-out
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+        style={{
+          background: "rgba(15, 15, 20, 0.75)",
+          backdropFilter: "blur(50px) saturate(200%)",
+          WebkitBackdropFilter: "blur(50px) saturate(200%)",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+        }}>
 
         {/* Logo */}
         <div className="h-14 flex items-center justify-between px-5">
           <Link href="/chat" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center">
-              <span className="text-sm font-black text-black">S</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #0A84FF, #5E5CE6)", boxShadow: "0 4px 16px rgba(10,132,255,0.3)" }}>
+              <span className="text-[13px] font-bold text-white">S</span>
             </div>
-            <span className="text-[15px] font-semibold text-white tracking-tight">S-Rank</span>
+            <div>
+              <span className="text-[14px] font-semibold text-white/90 tracking-tight block leading-none">S-Rank</span>
+              <span className="text-[10px] text-white/30 font-medium tracking-wider">AGENT</span>
+            </div>
           </Link>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-zinc-500 hover:text-white">
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-white/40 hover:text-white/80 transition-colors">
             <X size={18} />
           </button>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== "/" && item.href !== "/settings" && pathname.startsWith(item.href));
             return (
               <Link key={item.href} href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-200 ${
+                className={`flex items-center gap-3 px-3 py-[9px] rounded-xl text-[13px] font-medium transition-all duration-200 ${
                   isActive
-                    ? "bg-white/10 text-white"
-                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
-                }`}>
-                <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
+                    ? "text-white"
+                    : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
+                }`}
+                style={isActive ? {
+                  background: "rgba(255,255,255,0.08)",
+                  backdropFilter: "blur(10px)",
+                  boxShadow: "0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.05)",
+                } : undefined}>
+                <Icon size={16} strokeWidth={isActive ? 2 : 1.5} className={isActive ? "text-[#0A84FF]" : ""} />
                 <span>{item.label}</span>
                 {item.href === "/chat" && agentWorking && (
-                  <span className="ml-auto w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  <span className="ml-auto w-2 h-2 rounded-full animate-pulse" style={{ background: "#30D158", boxShadow: "0 0 8px rgba(48,209,88,0.5)" }} />
                 )}
               </Link>
             );
@@ -87,11 +103,11 @@ export function ResponsiveShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* User */}
-        <div className="px-4 py-3 border-t border-white/5">
+        <div className="px-4 py-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           <div className="flex items-center gap-3">
             <UserButton afterSignOutUrl="/" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-zinc-300 truncate">Mon compte</p>
+              <p className="text-[12px] font-medium text-white/60 truncate">Mon compte</p>
             </div>
           </div>
         </div>
@@ -100,11 +116,17 @@ export function ResponsiveShell({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <div className="lg:hidden flex items-center gap-3 h-12 px-4 border-b border-white/5 bg-[#0a0a0a]">
-          <button onClick={() => setSidebarOpen(true)} className="text-zinc-500 hover:text-white">
+        <div className="lg:hidden flex items-center gap-3 h-12 px-4"
+          style={{
+            background: "rgba(10,10,15,0.8)",
+            backdropFilter: "blur(30px)",
+            WebkitBackdropFilter: "blur(30px)",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+          }}>
+          <button onClick={() => setSidebarOpen(true)} className="text-white/40 hover:text-white/80 transition-colors">
             <Menu size={20} />
           </button>
-          <span className="text-sm font-medium text-zinc-300">
+          <span className="text-[13px] font-medium text-white/60">
             {NAV_ITEMS.find((n) => pathname.startsWith(n.href))?.label || "S-Rank"}
           </span>
         </div>

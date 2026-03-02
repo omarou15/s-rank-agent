@@ -74,32 +74,33 @@ function ExecBlockView({ block }: { block: ExecBlock }) {
   const isErr = block.status === "error" || (block.result && block.result.exitCode !== 0);
 
   return (
-    <div className="my-2 rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
+    <div className="my-2 rounded-2xl overflow-hidden"
+      style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)" }}>
       <button onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs hover:bg-white/[0.03] transition-colors">
         {block.status === "running" ? (
-          <Loader2 size={13} className="animate-spin text-blue-400" />
+          <Loader2 size={13} className="animate-spin text-[#0A84FF]" />
         ) : isOk ? (
-          <CheckCircle size={13} className="text-green-400" />
+          <CheckCircle size={13} className="text-[#30D158]" />
         ) : isErr ? (
-          <XCircle size={13} className="text-red-400" />
+          <XCircle size={13} className="text-[#FF453A]" />
         ) : (
-          <Code2 size={13} className="text-zinc-500" />
+          <Code2 size={13} className="text-white/25" />
         )}
-        <span className="text-zinc-400 flex-1 text-left font-medium">
+        <span className="text-white/45 flex-1 text-left font-medium">
           {block.status === "running" ? "Exécution..." :
            isOk ? `Terminé — ${(block.result?.duration || 0)}ms` :
            isErr ? "Erreur" : "En attente"}
         </span>
-        {open ? <ChevronDown size={13} className="text-zinc-600" /> : <ChevronRight size={13} className="text-zinc-600" />}
+        {open ? <ChevronDown size={13} className="text-white/20" /> : <ChevronRight size={13} className="text-white/20" />}
       </button>
       {open && (
-        <div className="border-t border-white/5">
-          <pre className="px-3.5 py-2.5 text-[11px] text-zinc-500 overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto font-mono">{block.code}</pre>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <pre className="px-3.5 py-2.5 text-[11px] text-white/30 overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto font-mono">{block.code}</pre>
           {block.result && (
-            <div className="border-t border-white/5 px-3.5 py-2.5">
-              {block.result.stdout && <pre className="text-[11px] text-green-400/80 overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto font-mono">{block.result.stdout}</pre>}
-              {block.result.stderr && <pre className="text-[11px] text-red-400/80 overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto font-mono">{block.result.stderr}</pre>}
+            <div className="px-3.5 py-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              {block.result.stdout && <pre className="text-[11px] text-[#30D158]/80 overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto font-mono">{block.result.stdout}</pre>}
+              {block.result.stderr && <pre className="text-[11px] text-[#FF453A]/80 overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto font-mono">{block.result.stderr}</pre>}
             </div>
           )}
         </div>
@@ -146,14 +147,17 @@ function FileCard({ filepath }: { filepath: string }) {
   };
 
   return (
-    <div className="my-2 flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.05] transition-colors">
-      <div className="shrink-0 w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">{getFileIcon(filename)}</div>
+    <div className="my-2 flex items-center gap-3 p-3 rounded-2xl hover:bg-white/[0.03] transition-all"
+      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+        style={{ background: "rgba(255,255,255,0.05)" }}>{getFileIcon(filename)}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-white truncate">{filename}</p>
-        {error && <p className="text-[10px] text-red-400 mt-0.5">{error}</p>}
+        <p className="text-[13px] font-medium text-white/90 truncate">{filename}</p>
+        {error && <p className="text-[10px] text-[#FF453A] mt-0.5">{error}</p>}
       </div>
       <button onClick={download} disabled={downloading}
-        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black hover:bg-zinc-200 disabled:opacity-50 transition-colors">
+        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white disabled:opacity-50 transition-all"
+        style={{ background: "rgba(10,132,255,0.15)", border: "1px solid rgba(10,132,255,0.2)" }}>
         {downloading ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />}
         {downloading ? "" : "Télécharger"}
       </button>
@@ -193,15 +197,18 @@ function ArtifactView({ artifact }: { artifact: Artifact }) {
   }, [artifact.html, expanded]);
 
   return (
-    <div className="my-3 rounded-xl border border-white/10 overflow-hidden bg-[#0a0a0a]">
-      <div className="flex items-center justify-between px-3.5 py-2 bg-white/[0.03] border-b border-white/5">
-        <span className="text-xs font-medium text-zinc-400">{artifact.title || "Artifact"}</span>
-        <button onClick={() => setExpanded(!expanded)} className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors">
+    <div className="my-3 rounded-2xl overflow-hidden"
+      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+      <div className="flex items-center justify-between px-3.5 py-2.5"
+        style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <span className="text-xs font-medium text-white/50">{artifact.title || "Artifact"}</span>
+        <button onClick={() => setExpanded(!expanded)} className="text-[10px] text-white/30 hover:text-white/60 transition-colors">
           {expanded ? "Réduire" : "Agrandir"}
         </button>
       </div>
       <iframe ref={iframeRef} sandbox="allow-scripts allow-same-origin"
-        className={`w-full border-0 bg-[#0a0a0a] transition-all ${expanded ? "h-[500px]" : "h-[350px]"}`}
+        className={`w-full border-0 transition-all ${expanded ? "h-[500px]" : "h-[350px]"}`}
+        style={{ background: "#0a0a0f" }}
         title={artifact.title} />
     </div>
   );
@@ -229,7 +236,7 @@ function InlineImage({ filepath }: { filepath: string }) {
 
   if (!src) return null;
   return (
-    <div className="my-2 rounded-xl overflow-hidden border border-white/5">
+    <div className="my-2 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
       <img src={src} alt={filename} className="max-w-full max-h-[400px] object-contain mx-auto" />
     </div>
   );
@@ -240,16 +247,17 @@ function InlineImage({ filepath }: { filepath: string }) {
 function CodeBlockView({ lang, code }: { lang: string; code: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="my-2 rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
+    <div className="my-2 rounded-2xl overflow-hidden"
+      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
       <button onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs hover:bg-white/[0.03] transition-colors">
-        <Code2 size={13} className="text-zinc-500" />
-        <span className="text-zinc-400 flex-1 text-left font-medium">{lang || "Code"}</span>
-        {open ? <ChevronDown size={13} className="text-zinc-600" /> : <ChevronRight size={13} className="text-zinc-600" />}
+        <Code2 size={13} className="text-white/25" />
+        <span className="text-white/45 flex-1 text-left font-medium">{lang || "Code"}</span>
+        {open ? <ChevronDown size={13} className="text-white/20" /> : <ChevronRight size={13} className="text-white/20" />}
       </button>
       {open && (
-        <div className="border-t border-white/5">
-          <pre className="px-3.5 py-2.5 text-[11px] text-zinc-400 overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto font-mono">{code}</pre>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <pre className="px-3.5 py-2.5 text-[11px] text-white/30 overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto font-mono">{code}</pre>
         </div>
       )}
     </div>
@@ -278,17 +286,17 @@ function renderContent(content: string) {
   }
 
   return (
-    <div className="space-y-1 text-[14px] text-zinc-300 leading-relaxed">
+    <div className="space-y-1 text-[14px] text-white/70 leading-relaxed">
       {segments.map((seg, si) => {
         if (seg.type === "code") {
           return <CodeBlockView key={si} lang={seg.lang || ""} code={seg.content} />;
         }
         return seg.content.split("\n").map((line, i) => {
           let html = line
-            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-medium">$1</strong>')
-            .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 bg-white/5 rounded-md text-blue-300 text-[12px] font-mono">$1</code>')
-            .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline underline-offset-2">$1</a>')
-            .replace(/(?<!href="|">)(https?:\/\/[^\s<"]+)/g, '<a href="$1" target="_blank" class="text-blue-400 hover:underline underline-offset-2">$1 ↗</a>');
+            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white/90 font-medium">$1</strong>')
+            .replace(/`([^`]+)`/g, '<code style="padding:2px 6px;background:rgba(255,255,255,0.06);border-radius:6px;font-size:12px;color:rgba(10,132,255,0.8);font-family:monospace">$1</code>')
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" style="color:rgba(10,132,255,0.8);text-decoration:none">$1</a>')
+            .replace(/(?<!href="|">)(https?:\/\/[^\s<"]+)/g, '<a href="$1" target="_blank" style="color:rgba(10,132,255,0.8);text-decoration:none">$1 ↗</a>');
           return <p key={`${si}-${i}`} className={line === "" ? "h-3" : ""} dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }} />;
         });
       })}
@@ -299,11 +307,13 @@ function renderContent(content: string) {
 // ── Streaming indicator (replaces raw code) ──
 function StreamingCodeIndicator() {
   return (
-    <div className="my-2 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+    <div className="my-2 flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl"
+      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
       <div className="relative w-4 h-4">
-        <div className="absolute inset-0 rounded-full border-2 border-blue-500/30 border-t-blue-400 animate-spin" />
+        <div className="absolute inset-0 rounded-full border-2 animate-spin"
+          style={{ borderColor: "rgba(10,132,255,0.15)", borderTopColor: "rgba(10,132,255,0.6)" }} />
       </div>
-      <span className="text-xs text-zinc-500 font-medium">Écriture du code...</span>
+      <span className="text-xs text-white/35 font-medium">Écriture du code...</span>
     </div>
   );
 }
@@ -465,22 +475,28 @@ export default function ChatPage() {
   const filtered = searchQuery ? messages.filter(m => m.content.toLowerCase().includes(searchQuery.toLowerCase())) : messages;
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a]">
-      {/* Header */}
-      <div className="shrink-0 h-12 border-b border-white/5 px-4 flex items-center justify-between">
+    <div className="flex flex-col h-full" style={{ background: "linear-gradient(180deg, rgba(5,5,15,1) 0%, #000000 100%)" }}>
+      {/* Header — Glass bar */}
+      <div className="shrink-0 h-12 px-4 flex items-center justify-between"
+        style={{
+          background: "rgba(10,10,18,0.7)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+        }}>
         <div className="flex items-center gap-2.5">
-          <div className="w-2 h-2 rounded-full bg-green-400" />
-          <span className="text-[13px] font-medium text-zinc-300">S-Rank Agent</span>
+          <div className="w-2 h-2 rounded-full" style={{ background: "#30D158", boxShadow: "0 0 8px rgba(48,209,88,0.4)" }} />
+          <span className="text-[13px] font-medium text-white/60">S-Rank Agent</span>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setShowSearch(!showSearch)} className="p-2 text-zinc-600 hover:text-zinc-300 rounded-lg transition-colors">
+          <button onClick={() => setShowSearch(!showSearch)} className="p-2 text-white/25 hover:text-white/60 rounded-xl transition-colors hover:bg-white/[0.04]">
             <Search size={15} />
           </button>
-          <button onClick={clearChat} className="p-2 text-zinc-600 hover:text-zinc-300 rounded-lg transition-colors">
+          <button onClick={clearChat} className="p-2 text-white/25 hover:text-white/60 rounded-xl transition-colors hover:bg-white/[0.04]">
             <Plus size={15} />
           </button>
           {!apiKey && (
-            <button onClick={() => setShowKeyInput(true)} className="p-2 text-amber-500 hover:text-amber-400 rounded-lg">
+            <button onClick={() => setShowKeyInput(true)} className="p-2 rounded-xl" style={{ color: "#FF9F0A" }}>
               <Key size={15} />
             </button>
           )}
@@ -488,29 +504,41 @@ export default function ChatPage() {
       </div>
 
       {showSearch && (
-        <div className="shrink-0 px-4 py-2 border-b border-white/5">
+        <div className="shrink-0 px-4 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
           <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Rechercher..."
-            autoFocus className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white/20 placeholder:text-zinc-600" />
+            autoFocus className="w-full rounded-xl px-3.5 py-2 text-sm text-white/90 focus:outline-none placeholder:text-white/20"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }} />
         </div>
       )}
 
       {showKeyInput && (
-        <div className="shrink-0 mx-4 mt-3 p-4 bg-[#141414] rounded-2xl border border-white/5">
+        <div className="shrink-0 mx-4 mt-3 p-4 rounded-2xl"
+          style={{
+            background: "rgba(20,20,30,0.8)",
+            backdropFilter: "blur(40px) saturate(180%)",
+            WebkitBackdropFilter: "blur(40px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+          }}>
           <div className="flex items-center gap-2 mb-3">
-            <Key size={14} className="text-zinc-400" />
-            <span className="text-sm font-medium text-white">Clé API Claude</span>
+            <Key size={14} className="text-white/40" />
+            <span className="text-sm font-medium text-white/80">Clé API Claude</span>
           </div>
-          <p className="text-xs text-zinc-500 mb-3">
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" className="text-blue-400 hover:underline inline-flex items-center gap-1">
+          <p className="text-xs text-white/35 mb-3">
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" className="hover:underline inline-flex items-center gap-1" style={{ color: "rgba(10,132,255,0.8)" }}>
               Obtenir ta clé <ExternalLink size={10} />
             </a>
           </p>
           <div className="flex gap-2">
             <input ref={keyInputRef} type="password" placeholder="sk-ant-api03-..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white/20"
+              className="flex-1 rounded-xl px-3.5 py-2.5 text-sm text-white/90 focus:outline-none"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
               onKeyDown={e => { if (e.key === "Enter") { const v = (e.target as HTMLInputElement).value; if (v.startsWith("sk-ant-")) saveApiKey(v); } }} />
             <button onClick={() => { const v = keyInputRef.current?.value || ""; if (v.startsWith("sk-ant-")) saveApiKey(v); }}
-              className="px-5 py-2.5 bg-white text-black text-sm font-medium rounded-xl hover:bg-zinc-200 transition-colors">OK</button>
+              className="px-5 py-2.5 text-sm font-medium text-white rounded-xl transition-all"
+              style={{ background: "linear-gradient(135deg, #0A84FF, #5E5CE6)", boxShadow: "0 4px 12px rgba(10,132,255,0.3)" }}>
+              OK
+            </button>
           </div>
         </div>
       )}
@@ -522,22 +550,30 @@ export default function ChatPage() {
             <div key={msg.id}>
               {msg.role === "system" ? (
                 <div className="flex justify-center my-3">
-                  <span className="text-[11px] text-zinc-600 bg-white/[0.03] px-3 py-1 rounded-full">{msg.content}</span>
+                  <span className="text-[11px] text-white/25 px-3.5 py-1.5 rounded-full"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                    {msg.content}
+                  </span>
                 </div>
               ) : (
                 <div className={`mb-5 ${msg.role === "user" ? "flex justify-end" : ""}`}>
                   {msg.role === "user" ? (
-                    <div className="max-w-[80%] bg-[#2a2a2a] rounded-2xl rounded-br-md px-4 py-3">
-                      <p className="text-[14px] text-white leading-relaxed">{msg.content}</p>
+                    <div className="max-w-[80%] rounded-2xl rounded-br-md px-4 py-3"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(10,132,255,0.2), rgba(94,92,230,0.15))",
+                        border: "1px solid rgba(10,132,255,0.15)",
+                        backdropFilter: "blur(10px)",
+                      }}>
+                      <p className="text-[14px] text-white/90 leading-relaxed">{msg.content}</p>
                     </div>
                   ) : (
                     <div className="max-w-full">
                       {msg.status === "streaming" && !msg.content ? (
                         <div className="flex items-center gap-2 py-2">
                           <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: "0ms" }} />
-                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: "150ms" }} />
-                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+                            <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "rgba(255,255,255,0.25)", animationDelay: "0ms" }} />
+                            <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "rgba(255,255,255,0.25)", animationDelay: "150ms" }} />
+                            <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "rgba(255,255,255,0.25)", animationDelay: "300ms" }} />
                           </div>
                         </div>
                       ) : (

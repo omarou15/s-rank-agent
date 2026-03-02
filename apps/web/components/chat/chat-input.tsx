@@ -15,6 +15,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [focused, setFocused] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -36,8 +37,6 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
       const path = `/home/agent/uploads/${file.name}`;
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
       const isImage = IMG_EXTS.includes(ext);
-
-      // Upload to VPS
       const r = await fetch("/api/files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, content: b64, encoding: "base64" }) });
       if (r.ok) setFiles(p => [...p, { name: file.name, size: file.size, path, type: file.type, base64: isImage ? b64 : undefined }]);
     } catch {} finally { setUploading(false); }
@@ -47,7 +46,15 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
 
   return (
     <div className="px-4 py-3">
-      <div className={`relative rounded-2xl border transition-all duration-200 ${dragOver ? "border-white/30 bg-white/5" : "border-white/10 bg-[#1a1a1a]"}`}
+      <div
+        className={`relative rounded-2xl transition-all duration-300 ${dragOver ? "scale-[1.01]" : ""}`}
+        style={{
+          background: "rgba(30, 30, 40, 0.6)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          border: `1px solid ${focused ? "rgba(10,132,255,0.3)" : dragOver ? "rgba(10,132,255,0.2)" : "rgba(255,255,255,0.08)"}`,
+          boxShadow: focused ? "0 0 0 3px rgba(10,132,255,0.08), 0 8px 32px rgba(0,0,0,0.3)" : "0 4px 24px rgba(0,0,0,0.2)",
+        }}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); Array.from(e.dataTransfer.files).forEach(upload); }}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}>
@@ -57,25 +64,29 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
           <div className="flex gap-2 px-4 pt-3">
             {files.filter(f => f.base64).map((f, i) => (
               <div key={i} className="relative group">
-                <img src={`data:${f.type};base64,${f.base64}`} alt={f.name} className="w-16 h-16 object-cover rounded-xl border border-white/10" />
+                <img src={`data:${f.type};base64,${f.base64}`} alt={f.name}
+                  className="w-14 h-14 object-cover rounded-xl"
+                  style={{ border: "1px solid rgba(255,255,255,0.1)" }} />
                 <button onClick={() => setFiles(p => p.filter(x => x.name !== f.name))}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-zinc-800 border border-white/10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <X size={10} className="text-zinc-300" />
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                  style={{ background: "rgba(255,69,58,0.9)", backdropFilter: "blur(10px)" }}>
+                  <X size={10} className="text-white" />
                 </button>
               </div>
             ))}
           </div>
         )}
 
-        {/* Non-image file chips */}
+        {/* File chips */}
         {files.filter(f => !f.base64).length > 0 && (
           <div className="flex flex-wrap gap-1.5 px-4 pt-3">
             {files.filter(f => !f.base64).map((f, i) => { const I = ICONS[getCat(f.name)]; return (
-              <div key={i} className="flex items-center gap-1.5 bg-white/5 rounded-lg px-2.5 py-1.5">
-                <I size={12} className="text-zinc-400" />
-                <span className="text-xs text-zinc-300 max-w-[120px] truncate">{f.name}</span>
-                <span className="text-[10px] text-zinc-600">{fmtSize(f.size)}</span>
-                <button onClick={() => setFiles(p => p.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-zinc-300 ml-0.5"><X size={12} /></button>
+              <div key={i} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <I size={12} className="text-white/40" />
+                <span className="text-xs text-white/60 max-w-[120px] truncate">{f.name}</span>
+                <span className="text-[10px] text-white/25">{fmtSize(f.size)}</span>
+                <button onClick={() => setFiles(p => p.filter((_, j) => j !== i))} className="text-white/25 hover:text-white/60 ml-0.5"><X size={12} /></button>
               </div>
             ); })}
           </div>
@@ -83,22 +94,26 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
 
         <div className="flex items-end gap-2 p-3">
           <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors disabled:opacity-30">
-            {uploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all disabled:opacity-30">
+            {uploading ? <Loader2 size={16} className="animate-spin text-[#0A84FF]" /> : <Paperclip size={16} />}
           </button>
           <input ref={fileRef} type="file" multiple accept="*/*" className="hidden" onChange={(e) => { if (e.target.files) Array.from(e.target.files).forEach(upload); e.target.value = ""; }} />
 
           <textarea ref={taRef} value={value} onChange={(e) => setValue(e.target.value)}
+            onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); } }}
             placeholder={uploading ? "Upload en cours..." : dragOver ? "Dépose ici..." : placeholder}
             disabled={disabled || uploading} rows={1}
-            className="flex-1 resize-none bg-transparent text-[15px] text-white placeholder-zinc-600 focus:outline-none leading-relaxed max-h-[160px]" />
+            className="flex-1 resize-none bg-transparent text-[15px] text-white/90 placeholder-white/25 focus:outline-none leading-relaxed max-h-[160px]" />
 
           <button onClick={doSend} disabled={!hasContent || disabled || uploading}
-            className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 ${
-              hasContent && !disabled ? "bg-white text-black hover:bg-zinc-200" : "bg-white/10 text-zinc-600"
-            }`}>
-            <ArrowUp size={16} strokeWidth={2.5} />
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300"
+            style={{
+              background: hasContent && !disabled ? "linear-gradient(135deg, #0A84FF, #5E5CE6)" : "rgba(255,255,255,0.06)",
+              boxShadow: hasContent && !disabled ? "0 4px 12px rgba(10,132,255,0.3)" : "none",
+              opacity: hasContent && !disabled ? 1 : 0.4,
+            }}>
+            <ArrowUp size={16} strokeWidth={2.5} className="text-white" />
           </button>
         </div>
       </div>
