@@ -39,3 +39,4 @@ test-results/
 # ── Misc ──
 *.tsbuildinfo
 apps/web/package-lock.json
+.vercel

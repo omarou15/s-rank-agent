@@ -38,7 +38,33 @@ function hasIncompleteExec(content: string): boolean {
   const execCloses = (content.match(/\[\/EXEC\]/g) || []).length;
   const artOpens = (content.match(/\[ARTIFACT:[^\]]*\]/g) || []).length;
   const artCloses = (content.match(/\[\/ARTIFACT\]/g) || []).length;
-  return execOpens > execCloses || artOpens > artCloses;
+  // Count triple backticks (must be even for complete blocks)
+  const backticks = (content.match(/```/g) || []).length;
+  return execOpens > execCloses || artOpens > artCloses || backticks % 2 !== 0;
+}
+
+// Strip incomplete blocks from streaming content
+function cleanForStreaming(content: string): string {
+  let c = content;
+  // Remove complete [EXEC] blocks
+  c = c.replace(/\[EXEC:\w+\][\s\S]*?\[\/EXEC\]/g, "");
+  // Remove complete [ARTIFACT] blocks
+  c = c.replace(/\[ARTIFACT:[^\]]*\][\s\S]*?\[\/ARTIFACT\]/g, "");
+  // Remove complete ``` blocks
+  c = c.replace(/```\w*\n[\s\S]*?```/g, "");
+  // Remove incomplete [EXEC] (open but not closed)
+  c = c.replace(/\[EXEC:\w+\][\s\S]*$/g, "");
+  // Remove incomplete [ARTIFACT]
+  c = c.replace(/\[ARTIFACT:[^\]]*\][\s\S]*$/g, "");
+  // Remove incomplete ``` block (odd number of ```)
+  const backticks = (c.match(/```/g) || []).length;
+  if (backticks % 2 !== 0) {
+    const lastIdx = c.lastIndexOf("```");
+    c = c.slice(0, lastIdx);
+  }
+  // Remove other tags
+  c = c.replace(/\[MEMORY:[^\]]*\]/g, "").replace(/\[CRON:[^\]]*\]/g, "").replace(/\[FILE:[^\]]*\]/g, "");
+  return c.trim();
 }
 
 // ── Exec block component ──
@@ -210,20 +236,64 @@ function InlineImage({ filepath }: { filepath: string }) {
 }
 
 // ── Render clean content ──
+// ── Code block component for markdown ``` blocks ──
+function CodeBlockView({ lang, code }: { lang: string; code: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="my-2 rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
+      <button onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs hover:bg-white/[0.03] transition-colors">
+        <Code2 size={13} className="text-zinc-500" />
+        <span className="text-zinc-400 flex-1 text-left font-medium">{lang || "Code"}</span>
+        {open ? <ChevronDown size={13} className="text-zinc-600" /> : <ChevronRight size={13} className="text-zinc-600" />}
+      </button>
+      {open && (
+        <div className="border-t border-white/5">
+          <pre className="px-3.5 py-2.5 text-[11px] text-zinc-400 overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto font-mono">{code}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function renderContent(content: string) {
   const clean = cleanForDisplay(content);
   if (!clean) return null;
 
-  const parts = clean.split("\n").map((line, i) => {
-    let html = line
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-medium">$1</strong>')
-      .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 bg-white/5 rounded-md text-blue-300 text-[12px] font-mono">$1</code>')
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline underline-offset-2">$1</a>')
-      .replace(/(?<!href="|">)(https?:\/\/[^\s<"]+)/g, '<a href="$1" target="_blank" class="text-blue-400 hover:underline underline-offset-2">$1 ↗</a>');
-    return <p key={i} className={line === "" ? "h-3" : ""} dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }} />;
-  });
+  // Split by markdown code blocks ```lang\n...\n```
+  const segments: { type: "text" | "code"; lang?: string; content: string }[] = [];
+  const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match;
 
-  return <div className="space-y-1 text-[14px] text-zinc-300 leading-relaxed">{parts}</div>;
+  while ((match = codeBlockRegex.exec(clean)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: "text", content: clean.slice(lastIndex, match.index) });
+    }
+    segments.push({ type: "code", lang: match[1], content: match[2].trim() });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < clean.length) {
+    segments.push({ type: "text", content: clean.slice(lastIndex) });
+  }
+
+  return (
+    <div className="space-y-1 text-[14px] text-zinc-300 leading-relaxed">
+      {segments.map((seg, si) => {
+        if (seg.type === "code") {
+          return <CodeBlockView key={si} lang={seg.lang || ""} code={seg.content} />;
+        }
+        return seg.content.split("\n").map((line, i) => {
+          let html = line
+            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-medium">$1</strong>')
+            .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 bg-white/5 rounded-md text-blue-300 text-[12px] font-mono">$1</code>')
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-400 hover:underline underline-offset-2">$1</a>')
+            .replace(/(?<!href="|">)(https?:\/\/[^\s<"]+)/g, '<a href="$1" target="_blank" class="text-blue-400 hover:underline underline-offset-2">$1 ↗</a>');
+          return <p key={`${si}-${i}`} className={line === "" ? "h-3" : ""} dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }} />;
+        });
+      })}
+    </div>
+  );
 }
 
 // ── Streaming indicator (replaces raw code) ──
@@ -475,7 +545,7 @@ export default function ChatPage() {
                           {/* During streaming: show clean text + code indicator if writing code */}
                           {msg.status === "streaming" ? (
                             <>
-                              {renderContent(msg.content)}
+                              {renderContent(cleanForStreaming(msg.content) || " ")}
                               {hasIncompleteExec(msg.content) && <StreamingCodeIndicator />}
                             </>
                           ) : (
