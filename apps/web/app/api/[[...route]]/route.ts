@@ -107,6 +107,51 @@ app.post("/exec", async (c) => {
   }
 });
 
+// ── Wallet ──
+app.get("/wallet", async (c) => {
+  try { return c.json(await vps("/wallet")); }
+  catch { return c.json({ balance: 0, daily_limit: 10, monthly_limit: 100, daily_spent: 0, monthly_spent: 0, transactions: [] }); }
+});
+app.post("/wallet/topup", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/wallet/topup", { method: "POST", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.post("/wallet/spend", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/wallet/spend", { method: "POST", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.post("/wallet/limits", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/wallet/limits", { method: "POST", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+
+// ── Email ──
+app.get("/email/config", async (c) => {
+  try { return c.json(await vps("/email/config")); }
+  catch { return c.json({ configured: false }); }
+});
+app.post("/email/config", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/email/config", { method: "POST", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.post("/email/test", async (c) => {
+  try { return c.json(await vps("/email/test", { method: "POST" })); }
+  catch (e: any) { return c.json({ status: "error", error: e.message }); }
+});
+app.post("/email/send", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/email/send", { method: "POST", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.get("/email/log", async (c) => {
+  try { return c.json(await vps("/email/log")); }
+  catch { return c.json([]); }
+});
+
 // ── Server Metrics ──
 app.get("/server/metrics", async (c) => {
   try {
