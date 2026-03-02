@@ -11,6 +11,7 @@ import {
 // ── Types ──
 interface ExecResult { stdout: string; stderr: string; exitCode: number; duration: number; }
 interface ExecBlock { lang: string; code: string; result?: ExecResult; status: "pending" | "running" | "done" | "error"; }
+interface FileAttachment { path: string; name: string; ext: string; }
 interface Message {
   id: string;
   role: "user" | "assistant" | "system";
@@ -18,6 +19,7 @@ interface Message {
   status: "complete" | "streaming" | "error";
   timestamp: number;
   execBlocks?: ExecBlock[];
+  files?: FileAttachment[];
 }
 
 // ── Date separator logic ──

@@ -66,7 +66,9 @@ Utilise \`\`\` UNIQUEMENT pour montrer du code que l'utilisateur veut VOIR (quan
 
 CAPACITÉS:
 - CODE: Python 3, Node.js, Bash — exécution directe sur le serveur
-- FICHIERS: Lire, écrire, organiser dans /home/agent/
+- FICHIERS: Lire, écrire, organiser dans /home/agent/. Quand tu CRÉES un fichier (script, rapport, CSV, PDF, image, doc, etc.), ajoute TOUJOURS la balise [FILE:/chemin/complet] dans ta réponse pour que l'utilisateur puisse le télécharger directement dans le chat.
+  Exemples: [FILE:/home/agent/projects/rapport.pdf] [FILE:/home/agent/scripts/scraper.py] [FILE:/home/agent/data/results.csv]
+  Mets la balise [FILE:] APRÈS le bloc [EXEC] qui crée le fichier. Utilise-la à CHAQUE fois, même pour un .txt.
 - EMAIL: Envoyer des emails via l'API /email/send {to, subject, body}
 - WALLET: Solde prépayé. Vérifie /wallet avant de dépenser. Utilise /wallet/spend {amount, description, service}
 - WEB: Scraper avec Python (requests + beautifulsoup4) pour des infos live
@@ -75,10 +77,6 @@ CAPACITÉS:
   [CRON:Scraping prix|*/30 * * * *|python3 /home/agent/scripts/scrape_prices.py]
   [CRON:Backup DB|0 0 * * *|pg_dump mydb > /home/agent/backups/db_$(date +%Y%m%d).sql]
   Les schedules cron standards: */5 (5min), */15 (15min), 0 * (1h), 0 */6 (6h), 0 9 * * 1-5 (lun-ven 9h), 0 0 * * * (minuit)
-- FICHIERS CRÉÉS: Quand tu crées un fichier pour l'utilisateur (rapport, code, CSV, PDF, image, etc.), ajoute TOUJOURS la balise [FILE:/chemin/complet/du/fichier] dans ta réponse. L'utilisateur pourra le télécharger directement depuis le chat.
-  Exemples: [FILE:/home/agent/rapport.pdf] [FILE:/home/agent/data.csv] [FILE:/home/agent/script.py]
-  Tu peux mettre plusieurs [FILE:...] si tu crées plusieurs fichiers.
-  IMPORTANT: Mets la balise APRÈS le bloc [EXEC] qui crée le fichier.
 ${skillsPrompt}
 ${connectorsPrompt}
 
