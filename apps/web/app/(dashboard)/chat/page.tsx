@@ -331,6 +331,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [apiKey, setApiKey] = useState("");
+  const [selectedModel, setSelectedModel] = useState(() => { try { return localStorage.getItem("s-rank-model") || "claude-sonnet-4-20250514"; } catch { return "claude-sonnet-4-20250514"; } });
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -469,6 +470,7 @@ export default function ChatPage() {
       body: JSON.stringify({
         content,
         apiKey,
+        model: selectedModel,
         history,
         trustLevel: getTrustLevel(),
         memoryContext: getMemoryContext(),

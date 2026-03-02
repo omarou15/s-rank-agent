@@ -249,6 +249,80 @@ function AgentModeCard() {
   );
 }
 
+// ── Model Selector Card ──
+function ModelCard() {
+  const models = [
+    { id: "claude-sonnet-4-20250514", name: "Sonnet 4", desc: "Rapide & intelligent", cost: "3$/M tokens", badge: "Recommandé", color: "blue" },
+    { id: "claude-haiku-3-5-20241022", name: "Haiku 3.5", desc: "Ultra rapide & économique", cost: "0.25$/M tokens", badge: "Économique", color: "emerald" },
+    { id: "claude-opus-4-20250514", name: "Opus 4", desc: "Le plus puissant", cost: "15$/M tokens", badge: "Premium", color: "purple" },
+  ];
+
+  const [selected, setSelected] = useState(() => {
+    try { return localStorage.getItem("s-rank-model") || "claude-sonnet-4-20250514"; } catch { return "claude-sonnet-4-20250514"; }
+  });
+  const [saved, setSaved] = useState(false);
+
+  const selectModel = (id: string) => {
+    setSelected(id);
+    localStorage.setItem("s-rank-model", id);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <Brain size={16} className="text-cyan-400" />
+          <div>
+            <h2 className="text-sm font-medium text-white">Modèle IA</h2>
+            <p className="text-[11px] text-zinc-500">Choisis le modèle Claude pour l&apos;agent</p>
+          </div>
+        </div>
+        {saved && <span className="text-[10px] text-emerald-400 flex items-center gap-1"><CheckCircle size={12} /> Sauvé</span>}
+      </div>
+      <div className="space-y-2">
+        {models.map(m => {
+          const isActive = selected === m.id;
+          const borderColor = isActive
+            ? m.color === "blue" ? "border-blue-500/40 bg-blue-500/5"
+            : m.color === "emerald" ? "border-emerald-500/40 bg-emerald-500/5"
+            : "border-purple-500/40 bg-purple-500/5"
+            : "border-white/[0.06] hover:border-white/[0.12] bg-white/[0.01]";
+          const badgeColor = m.color === "blue" ? "bg-blue-500/10 text-blue-400"
+            : m.color === "emerald" ? "bg-emerald-500/10 text-emerald-400"
+            : "bg-purple-500/10 text-purple-400";
+          return (
+            <button key={m.id} onClick={() => selectModel(m.id)}
+              className={`w-full p-3.5 rounded-xl border text-left transition-all ${borderColor}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full border-2 ${isActive ? "border-white bg-white" : "border-zinc-600"}`} />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-white">{m.name}</span>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${badgeColor}`}>{m.badge}</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">{m.desc}</p>
+                  </div>
+                </div>
+                <span className="text-[10px] text-zinc-500 font-mono">{m.cost}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+        <p className="text-[10px] text-zinc-500 leading-relaxed">
+          💡 <strong className="text-zinc-400">Haiku</strong> = idéal pour les tâches simples (scripts, fichiers).
+          <strong className="text-zinc-400"> Sonnet</strong> = meilleur rapport qualité/prix.
+          <strong className="text-zinc-400"> Opus</strong> = raisonnement complexe, projets lourds.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Settings Page ──
 export default function SettingsPage() {
   return (
@@ -259,6 +333,7 @@ export default function SettingsPage() {
           <p className="text-xs text-zinc-500 mt-1">Configure ton agent S-Rank.</p>
         </div>
 
+        <ModelCard />
         <AgentModeCard />
 
         <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
