@@ -1,4 +1,4 @@
-# 🏆 S-Rank Agent
+# 🏆 S-Rank Agent.
 
 > **Your AI-powered cloud PC. Ask, it executes.**
 
