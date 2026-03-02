@@ -33,9 +33,10 @@ export default function FilesPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/files/list?path=${encodeURIComponent(path)}`);
+      const res = await fetch(`/api/files/list?path=${encodeURIComponent(path)}&t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
-      setFiles(data.files || []);
+      if (data.error) { setError(data.error); setFiles([]); }
+      else { setFiles(data.files || []); }
       setCurrentPath(path);
       setSelectedFile(null);
       setPreviewContent(null);
@@ -76,20 +77,35 @@ export default function FilesPage() {
   const handleNewFolder = async () => {
     const name = prompt("Nom du dossier :");
     if (!name) return;
-    await fetch("/api/files/mkdir", {
+    const res = await fetch("/api/files/mkdir", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path: `${currentPath}/${name}` }),
     });
-    loadFiles(currentPath);
+    const data = await res.json();
+    console.log("mkdir result:", data);
+    await loadFiles(currentPath);
+  };
+
+  const handleNewFile = async () => {
+    const name = prompt("Nom du fichier (ex: script.py) :");
+    if (!name) return;
+    const res = await fetch("/api/files/write", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: `${currentPath}/${name}`, content: "" }),
+    });
+    const data = await res.json();
+    console.log("write result:", data);
+    await loadFiles(currentPath);
   };
 
   const handleDelete = async (file: FileItem) => {
     if (!confirm(`Supprimer ${file.name} ?`)) return;
-    await fetch(`/api/files/delete?path=${encodeURIComponent(file.path)}`, { method: "DELETE" });
+    await fetch(`/api/files/delete?path=${encodeURIComponent(file.path)}&t=${Date.now()}`, { method: "DELETE" });
     setSelectedFile(null);
     setShowPreview(false);
-    loadFiles(currentPath);
+    await loadFiles(currentPath);
   };
 
   const handleSearch = async () => {
@@ -135,12 +151,20 @@ export default function FilesPage() {
       <div className="px-4 py-3 border-b border-zinc-800 space-y-2">
         <div className="flex items-center justify-between">
           <h1 className="text-sm font-semibold text-white">Fichiers</h1>
-          <button
-            onClick={handleNewFolder}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 text-zinc-300"
-          >
-            <Plus size={14} /> Dossier
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleNewFile}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 text-zinc-300"
+            >
+              <Plus size={14} /> Fichier
+            </button>
+            <button
+              onClick={handleNewFolder}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 text-zinc-300"
+            >
+              <FolderOpen size={14} /> Dossier
+            </button>
+          </div>
         </div>
 
         {/* Breadcrumb */}

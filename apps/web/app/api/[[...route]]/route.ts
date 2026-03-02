@@ -15,6 +15,7 @@ async function vps(path: string, options?: RequestInit) {
   const res = await fetch(`${VPS_URL}${path}`, {
     ...options,
     headers: { "x-api-key": VPS_KEY, "Content-Type": "application/json", ...(options?.headers || {}) },
+    cache: "no-store",
   });
   return res.json();
 }
