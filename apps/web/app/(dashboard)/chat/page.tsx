@@ -326,7 +326,7 @@ function StreamingCodeIndicator() {
 
 // ── Main Chat ──
 export default function ChatPage() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const uid = user?.id || "default";
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -351,6 +351,7 @@ export default function ChatPage() {
   }, [streaming]);
 
   useEffect(() => {
+    if (!isLoaded) return; // Wait for Clerk to resolve user
     const stored = localStorage.getItem("s-rank-api-key");
     if (stored) setApiKey(stored); else setShowKeyInput(true);
     try {
@@ -368,7 +369,7 @@ export default function ChatPage() {
     };
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, [uid]);
+  }, [uid, isLoaded]);
 
   useEffect(() => {
     if (messages.length > 1 || (messages.length === 1 && messages[0]?.id !== "welcome")) {
