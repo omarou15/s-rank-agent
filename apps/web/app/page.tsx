@@ -5,6 +5,9 @@ const FEATURES = [
   { icon: "📁", title: "PC Cloud", desc: "Explorateur de fichiers visuel. L'IA organise tout automatiquement par projet." },
   { icon: "🔌", title: "Connecteurs MCP", desc: "GitHub, Slack, Google Drive, Stripe, Vercel... activables en 1 clic." },
   { icon: "🧠", title: "Mémoire Long-Terme", desc: "L'agent retient tes préférences, tes projets et ton contexte d'une session à l'autre." },
+  { icon: "📧", title: "Email en ton Nom", desc: "L'agent envoie des emails depuis ta boîte mail. Pas de bot, ton identité réelle." },
+  { icon: "💰", title: "Wallet Autonome", desc: "Wallet prépayé avec limites. L'agent achète des services cloud pour toi." },
+  { icon: "⬛", title: "Terminal + Claude Code", desc: "Terminal interactif + mode IA. Décris en français, il exécute la commande." },
   { icon: "🎚️", title: "Slider de Confiance", desc: "4 niveaux d'autonomie. De supervision totale à full auto. Toi qui décides." },
   { icon: "🛒", title: "25+ Skills & APIs", desc: "Fullstack SaaS Builder, Stripe, Clerk, Vercel, Hetzner, Telegram... prêts à l'emploi." },
 ];
