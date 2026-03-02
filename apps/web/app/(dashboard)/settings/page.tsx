@@ -148,6 +148,7 @@ function EmailCard() {
     await fetch("/api/email/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
     setConfig({ configured: true, email: form.smtp_user, from_name: form.from_name, smtp_host: form.smtp_host });
     setEditing(false);
+    localStorage.setItem("s-rank-config-event", JSON.stringify({ type: "email_configured", message: `Email agent configuré ✓ — ${form.smtp_user}`, ts: Date.now() }));
   };
 
   const testEmail = async () => {
@@ -262,6 +263,7 @@ export default function SettingsPage() {
   const saveKey = () => {
     if (!apiKey.startsWith("sk-ant-")) { setMessage("La clé doit commencer par sk-ant-"); return; }
     localStorage.setItem("s-rank-api-key", apiKey); setHasKey(true);
+    localStorage.setItem("s-rank-config-event", JSON.stringify({ type: "api_key", message: "Clé API Claude configurée ✓", ts: Date.now() }));
     setMessage("Clé sauvegardée !"); setTimeout(() => setMessage(""), 3000);
     localStorage.setItem("s-rank-pending-event", JSON.stringify({
       type: "api_key_saved",

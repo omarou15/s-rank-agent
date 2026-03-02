@@ -128,12 +128,12 @@ export default function SkillsPage() {
     setSkills((prev) => prev.map((s) => s.id === id ? { ...s, installed: true } : s));
     const installedSkills = skills.filter((s) => s.installed || s.id === id);
     localStorage.setItem("s-rank-installed-skills", JSON.stringify(installedSkills.map((s) => s.name)));
-    // Proactive event → chat
+    // Broadcast to chat via storage event
     const skillName = skills.find(s => s.id === id)?.name || "Skill";
-    localStorage.setItem("s-rank-pending-event", JSON.stringify({
+    localStorage.setItem("s-rank-config-event", JSON.stringify({
       type: "skill_installed",
-      message: `🧩 **${skillName}** installé. Je maîtrise maintenant ce domaine — dis-moi si tu veux l'utiliser.`,
-      importance: "high",
+      message: `Skill "${skillName}" installé ✓ — je maîtrise maintenant ce domaine.`,
+      ts: Date.now(),
     }));
     setInstalling(null);
   };
@@ -142,6 +142,12 @@ export default function SkillsPage() {
     setSkills((prev) => prev.map((s) => s.id === id ? { ...s, installed: false } : s));
     const installedSkills = skills.filter((s) => s.installed && s.id !== id);
     localStorage.setItem("s-rank-installed-skills", JSON.stringify(installedSkills.map((s) => s.name)));
+    const skillName = skills.find(s => s.id === id)?.name || "Skill";
+    localStorage.setItem("s-rank-config-event", JSON.stringify({
+      type: "skill_removed",
+      message: `Skill "${skillName}" désinstallé.`,
+      ts: Date.now(),
+    }));
   };
 
   const categories = ["all", ...new Set(SKILLS.map((s) => s.category))];

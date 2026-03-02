@@ -62,11 +62,11 @@ export default function ConnectorsPage() {
       // Save active connectors list for chat system prompt
       const active = updated.filter(c => c.enabled && c.status === "connected").map(c => `${c.name} (${c.description})`);
       localStorage.setItem("s-rank-active-connectors", JSON.stringify(active));
-      // Proactive event
-      localStorage.setItem("s-rank-pending-event", JSON.stringify({
+      // Broadcast to chat
+      localStorage.setItem("s-rank-config-event", JSON.stringify({
         type: "connector_toggled",
-        message: nowEnabled ? `🔌 **${conn.name}** connecté. Je peux maintenant interagir avec ce service.` : `🔌 **${conn.name}** déconnecté.`,
-        importance: nowEnabled ? "high" : "low",
+        message: nowEnabled ? `${conn.name} connecté ✓` : `${conn.name} déconnecté`,
+        ts: Date.now(),
       }));
     }
   };
@@ -78,10 +78,10 @@ export default function ConnectorsPage() {
     localStorage.setItem("s-rank-active-connectors", JSON.stringify(active));
     const conn = connectors.find(c => c.id === id);
     if (conn && token) {
-      localStorage.setItem("s-rank-pending-event", JSON.stringify({
+      localStorage.setItem("s-rank-config-event", JSON.stringify({
         type: "connector_configured",
-        message: `🔌 **${conn.name}** configuré et prêt. Token sauvegardé.`,
-        importance: "high",
+        message: `${conn.name} configuré et prêt ✓`,
+        ts: Date.now(),
       }));
     }
     setEditingId(null);
