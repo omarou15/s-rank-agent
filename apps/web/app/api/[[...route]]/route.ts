@@ -327,6 +327,31 @@ app.delete("/folders/:id", async (c) => {
   catch { return c.json({ success: false }); }
 });
 
+// ── Preview: serve static files from user apps ──
+app.get("/preview/:appName/*", async (c) => {
+  const appName = c.req.param("appName");
+  let splat = c.req.path.replace(`/api/preview/${appName}/`, "").replace(/^\/+/, "");
+  if (!splat || splat === "" || splat === "/") splat = "index.html";
+  const filePath = `/home/agent/apps/${appName}/${splat}`;
+  try {
+    const data = await vps(`/files/read?path=${encodeURIComponent(filePath)}`);
+    const ext = filePath.split(".").pop()?.toLowerCase() || "";
+    const mimeMap: Record<string, string> = {
+      html: "text/html", css: "text/css", js: "application/javascript",
+      json: "application/json", svg: "image/svg+xml", png: "image/png",
+      jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp",
+      ico: "image/x-icon", woff: "font/woff", woff2: "font/woff2", txt: "text/plain",
+    };
+    const mime = mimeMap[ext] || "text/plain";
+    return new Response(data.content || "", { headers: { "Content-Type": `${mime}; charset=utf-8`, "Access-Control-Allow-Origin": "*" } });
+  } catch { return c.text("File not found", 404); }
+});
+
+app.get("/preview/:appName", async (c) => {
+  const appName = c.req.param("appName");
+  return c.redirect(`/api/preview/${appName}/`);
+});
+
 export const GET = handle(app);
 export const POST = handle(app);
 export const PUT = handle(app);
