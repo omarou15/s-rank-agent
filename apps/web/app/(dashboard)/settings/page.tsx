@@ -2,57 +2,99 @@
 
 import { useState, useEffect } from "react";
 import { TrustSlider } from "@/components/shared/trust-slider";
-import { Key, Server, Activity, ExternalLink, Brain, Trash2, Mail, Wallet, ArrowUpRight, CheckCircle, XCircle, Loader2, AlertTriangle, GitBranch } from "lucide-react";
+import { Key, Activity, Brain, Wallet, Loader2, GitBranch, Mail, CheckCircle, ExternalLink } from "lucide-react";
 
 // ── Orchestrator Toggle ──
 function OrchestratorToggle() {
   const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    setEnabled(localStorage.getItem("s-rank-orchestrator") === "true");
-  }, []);
-
+  useEffect(() => { setEnabled(localStorage.getItem("s-rank-orchestrator") === "true"); }, []);
   const toggle = () => {
     const next = !enabled;
     setEnabled(next);
     localStorage.setItem("s-rank-orchestrator", String(next));
-    localStorage.setItem("s-rank-config-event", JSON.stringify({
-      type: "orchestrator_mode",
-      message: next ? "Mode orchestrateur activé — l'agent délègue le code aux sub-agents" : "Mode direct activé — l'agent code lui-même",
-      ts: Date.now(),
-    }));
+    localStorage.setItem("s-rank-config-event", JSON.stringify({ type: "orchestrator_mode", message: next ? "Mode orchestrateur activé" : "Mode direct activé", ts: Date.now() }));
   };
-
   return (
-    <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
+    <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <GitBranch size={16} className="text-amber-400" />
           <div>
-            <h2 className="text-sm font-semibold text-white">Mode Orchestrateur</h2>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              {enabled ? "L'agent délègue le code à des sub-agents spécialisés" : "L'agent écrit et exécute le code lui-même"}
-            </p>
+            <h2 className="text-sm font-medium text-white">Mode Orchestrateur</h2>
+            <p className="text-[11px] text-zinc-500 mt-0.5">{enabled ? "Délègue le code aux sub-agents" : "Code directement lui-même"}</p>
           </div>
         </div>
-        <button onClick={toggle}
-          className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? "bg-amber-500" : "bg-zinc-700"}`}>
-          <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+        <button onClick={toggle} className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? "bg-amber-500" : "bg-zinc-700"}`}>
+          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-[22px]" : "translate-x-0.5"}`} />
         </button>
       </div>
       {enabled && (
-        <div className="mt-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
-          <p className="text-[11px] text-amber-400/70 leading-relaxed">
-            L&apos;agent planifie et supervise. Le code est généré par des sub-agents via API Claude.
-            Plus lent (+2-5s par délégation) mais meilleure qualité sur les projets complexes.
-          </p>
-        </div>
+        <p className="mt-3 text-[10px] text-amber-400/60 leading-relaxed p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10">
+          Plus lent (+2-5s) mais meilleure qualité sur les projets complexes.
+        </p>
       )}
     </div>
   );
 }
 
-// Wallet Component (existing)
+// ── Email Config Card ──
+function EmailCard() {
+  const [email, setEmail] = useState("");
+  const [smtpHost, setSmtpHost] = useState("smtp.gmail.com");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPass, setSmtpPass] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    try {
+      const cfg = JSON.parse(localStorage.getItem("s-rank-email-config") || "{}");
+      if (cfg.email) setEmail(cfg.email);
+      if (cfg.smtpHost) setSmtpHost(cfg.smtpHost);
+      if (cfg.smtpPort) setSmtpPort(cfg.smtpPort);
+      if (cfg.smtpUser) setSmtpUser(cfg.smtpUser);
+      if (cfg.smtpPass) setSmtpPass(cfg.smtpPass);
+    } catch {}
+  }, []);
+
+  const saveConfig = () => {
+    localStorage.setItem("s-rank-email-config", JSON.stringify({ email, smtpHost, smtpPort, smtpUser, smtpPass }));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+      <div className="flex items-center gap-3 mb-4">
+        <Mail size={16} className="text-blue-400" />
+        <div>
+          <h2 className="text-sm font-medium text-white">Email SMTP</h2>
+          <p className="text-[11px] text-zinc-500">Pour que l&apos;agent envoie des emails</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <input value={email} onChange={e => setEmail(e.target.value)} placeholder="ton@email.com"
+          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50 placeholder:text-zinc-600" />
+        <div className="grid grid-cols-2 gap-2">
+          <input value={smtpHost} onChange={e => setSmtpHost(e.target.value)} placeholder="smtp.gmail.com"
+            className="px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50 placeholder:text-zinc-600" />
+          <input value={smtpPort} onChange={e => setSmtpPort(e.target.value)} placeholder="587"
+            className="px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50 placeholder:text-zinc-600" />
+        </div>
+        <input value={smtpUser} onChange={e => setSmtpUser(e.target.value)} placeholder="Utilisateur SMTP"
+          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50 placeholder:text-zinc-600" />
+        <input type="password" value={smtpPass} onChange={e => setSmtpPass(e.target.value)} placeholder="Mot de passe SMTP"
+          className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500/50 placeholder:text-zinc-600" />
+        <button onClick={saveConfig}
+          className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${saved ? "bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-500 text-white"}`}>
+          {saved ? "✓ Sauvegardé" : "Sauvegarder"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Wallet Card ──
 function WalletCard() {
   const [wallet, setWallet] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +107,6 @@ function WalletCard() {
     fetch("/api/wallet").then(r => r.json()).then(w => {
       setWallet(w); setDailyLimit(String(w.daily_limit || 10)); setMonthlyLimit(String(w.monthly_limit || 100));
     }).catch(() => {}).finally(() => setLoading(false));
-
     const params = new URLSearchParams(window.location.search);
     if (params.get("wallet_success") === "true") {
       const amount = parseInt(params.get("amount") || "0");
@@ -94,197 +135,146 @@ function WalletCard() {
     setTimeout(() => setLimitsSaved(false), 2000);
   };
 
-  if (loading) return <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800 animate-pulse h-48" />;
+  if (loading) return <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06] animate-pulse h-48" />;
 
   return (
-    <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
-      <div className="flex items-center gap-2 mb-1">
+    <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+      <div className="flex items-center gap-3 mb-4">
         <Wallet size={16} className="text-amber-400" />
-        <h2 className="text-sm font-semibold text-white">Wallet Agent</h2>
+        <div>
+          <h2 className="text-sm font-medium text-white">Wallet Agent</h2>
+          <p className="text-[11px] text-zinc-500">Solde prépayé pour achats de services</p>
+        </div>
       </div>
-      <p className="text-xs text-zinc-500 mb-4">Solde prépayé pour que ton agent achète des services (domaines, APIs, serveurs).</p>
-      
       <div className="bg-zinc-950 rounded-xl p-4 mb-4 border border-zinc-800">
-        <p className="text-[10px] text-zinc-500 uppercase">Solde disponible</p>
-        <p className="text-3xl font-bold text-white">{(wallet?.balance || 0).toFixed(2)}€</p>
-        <div className="flex items-center gap-4 mt-2 text-[10px] text-zinc-500">
-          <span>Dépensé aujourd&apos;hui: <span className="text-zinc-300">{(wallet?.daily_spent || 0).toFixed(2)}€</span> / {wallet?.daily_limit || 10}€</span>
-          <span>Ce mois: <span className="text-zinc-300">{(wallet?.monthly_spent || 0).toFixed(2)}€</span> / {wallet?.monthly_limit || 100}€</span>
+        <p className="text-[10px] text-zinc-500 uppercase">Solde</p>
+        <p className="text-2xl font-bold text-white">{(wallet?.balance || 0).toFixed(2)}€</p>
+        <div className="flex items-center gap-4 mt-1 text-[10px] text-zinc-500">
+          <span>Jour: {(wallet?.daily_spent || 0).toFixed(2)}€ / {wallet?.daily_limit || 10}€</span>
+          <span>Mois: {(wallet?.monthly_spent || 0).toFixed(2)}€ / {wallet?.monthly_limit || 100}€</span>
         </div>
       </div>
-
-      <div className="mb-4">
-        <p className="text-xs text-zinc-400 mb-2">Recharger le wallet</p>
-        <div className="grid grid-cols-4 gap-2">
-          {[10, 25, 50, 100].map(a => (
-            <button key={a} onClick={() => topUp(a)} disabled={topUpLoading === a}
-              className="py-2 rounded-lg text-sm font-medium bg-zinc-800 border border-zinc-700 hover:border-violet-500/30 text-white transition-colors disabled:opacity-50">
-              {topUpLoading === a ? <Loader2 size={14} className="animate-spin mx-auto" /> : `${a}€`}
-            </button>
-          ))}
-        </div>
-        <p className="text-[10px] text-zinc-600 mt-1">Paiement sécurisé par Stripe</p>
+      <p className="text-[11px] text-zinc-400 mb-2">Recharger</p>
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        {[10, 25, 50, 100].map(a => (
+          <button key={a} onClick={() => topUp(a)} disabled={topUpLoading === a}
+            className="py-2 rounded-lg text-xs font-medium bg-zinc-800/50 border border-zinc-700 hover:border-blue-500/30 text-white transition-colors disabled:opacity-50">
+            {topUpLoading === a ? <Loader2 size={14} className="animate-spin mx-auto" /> : `${a}€`}
+          </button>
+        ))}
       </div>
-
-      <div className="mb-3">
-        <p className="text-xs text-zinc-400 mb-2">Limites de dépenses</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] text-zinc-500 block mb-1">Par jour</label>
-            <div className="flex items-center gap-1">
-              <input value={dailyLimit} onChange={(e) => setDailyLimit(e.target.value.replace(/[^0-9.]/g, ""))}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500" />
-              <span className="text-[10px] text-zinc-500">€</span>
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] text-zinc-500 block mb-1">Par mois</label>
-            <div className="flex items-center gap-1">
-              <input value={monthlyLimit} onChange={(e) => setMonthlyLimit(e.target.value.replace(/[^0-9.]/g, ""))}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-violet-500" />
-              <span className="text-[10px] text-zinc-500">€</span>
-            </div>
-          </div>
+      <p className="text-[11px] text-zinc-400 mb-2">Limites</p>
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div>
+          <label className="text-[10px] text-zinc-500 block mb-1">Par jour (€)</label>
+          <input value={dailyLimit} onChange={e => setDailyLimit(e.target.value.replace(/[^0-9.]/g, ""))}
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50" />
         </div>
-        <button onClick={saveLimits} className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${limitsSaved ? "bg-green-600 text-white" : "bg-violet-600 hover:bg-violet-700 text-white"}`}>
-          {limitsSaved ? "✓ Sauvegardé" : "Sauvegarder les limites"}
-        </button>
+        <div>
+          <label className="text-[10px] text-zinc-500 block mb-1">Par mois (€)</label>
+          <input value={monthlyLimit} onChange={e => setMonthlyLimit(e.target.value.replace(/[^0-9.]/g, ""))}
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50" />
+        </div>
       </div>
+      <button onClick={saveLimits}
+        className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${limitsSaved ? "bg-emerald-600 text-white" : "bg-blue-600 hover:bg-blue-500 text-white"}`}>
+        {limitsSaved ? "✓ Sauvegardé" : "Sauvegarder les limites"}
+      </button>
     </div>
   );
 }
 
-export default function SettingsPage() {
-  const [agentMode, setAgentMode] = useState<"on-demand" | "always-on">("on-demand");
-  const [isLoading, setIsLoading] = useState(false);
+// ── Agent Mode Section ──
+function AgentModeCard() {
+  const [mode, setMode] = useState<"on-demand" | "always-on">("on-demand");
+  const [saving, setSaving] = useState(false);
 
-  // Load agent mode on mount
   useEffect(() => {
-    const loadMode = async () => {
-      try {
-        const response = await fetch("/api/settings/agent-mode");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.mode && ["on-demand", "always-on"].includes(data.mode)) {
-            setAgentMode(data.mode);
-            return;
-          }
-        }
-      } catch (error) {
-        console.log("API not available, using localStorage");
-      }
-
-      // Fallback to localStorage
-      const stored = localStorage.getItem("s-rank-agent-mode");
-      if (stored && ["on-demand", "always-on"].includes(stored)) {
-        setAgentMode(stored as "on-demand" | "always-on");
-      }
-    };
-    loadMode();
+    const stored = localStorage.getItem("s-rank-agent-mode");
+    if (stored === "always-on") setMode("always-on");
   }, []);
 
-  // Update agent mode
-  const updateAgentMode = async (newMode: "on-demand" | "always-on") => {
-    if (isLoading || agentMode === newMode) return;
-    
-    setIsLoading(true);
-    const previousMode = agentMode;
-    
+  const updateMode = async (newMode: "on-demand" | "always-on") => {
+    if (saving || mode === newMode) return;
+    setSaving(true);
+    setMode(newMode);
+    localStorage.setItem("s-rank-agent-mode", newMode);
+
+    // Notify chat
+    localStorage.setItem("s-rank-config-event", JSON.stringify({
+      type: "agent_mode", message: newMode === "always-on" ? "Mode Always-On activé — l'agent travaille en continu" : "Mode On-Demand activé — l'agent attend tes instructions", ts: Date.now(),
+    }));
+
+    // Try API save (non-blocking)
     try {
-      // Optimistic update
-      setAgentMode(newMode);
-      localStorage.setItem("s-rank-agent-mode", newMode);
-
-      // Save to API
-      const response = await fetch("/api/settings/agent-mode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: newMode }),
-      });
-
-      if (!response.ok) throw new Error("API failed");
-      
-      console.log(`✅ Agent mode changed to: ${newMode}`);
-      
-    } catch (error) {
-      console.error("Failed to update agent mode:", error);
-      
-      // Revert on error
-      setAgentMode(previousMode);
-      localStorage.setItem("s-rank-agent-mode", previousMode);
-    } finally {
-      setIsLoading(false);
-    }
+      await fetch("/api/settings/agent-mode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: newMode }) });
+    } catch {}
+    setSaving(false);
   };
 
-  return (
-    <div className="container max-w-4xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white mb-2">Paramètres</h1>
-        <p className="text-zinc-400 text-sm">Configure ton agent S-Rank selon tes préférences.</p>
-      </div>
+  const modes = [
+    { id: "on-demand" as const, label: "On-Demand", desc: "Répond quand tu lui parles", icon: "⏱" },
+    { id: "always-on" as const, label: "Always-On", desc: "Travaille en continu 24/7", icon: "⚡" },
+  ];
 
-      <div className="grid gap-6">
-        {/* Agent Mode - FIXED VERSION */}
-        <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={16} className="text-emerald-400" />
-            <h2 className="text-sm font-semibold text-white">Mode agent</h2>
-          </div>
-          <div className="flex gap-3">
-            {[
-              { mode: "on-demand", label: "On-Demand", desc: "Répond quand tu lui parles" }, 
-              { mode: "always-on", label: "Always-On", desc: "Travaille en continu" }
-            ].map(({ mode, label, desc }) => (
-              <button 
-                key={mode} 
-                onClick={() => updateAgentMode(mode as "on-demand" | "always-on")}
-                disabled={isLoading}
-                className={`flex-1 p-4 rounded-xl border text-left transition-all ${
-                  agentMode === mode 
-                    ? "border-violet-500 bg-violet-500/5" 
-                    : "border-zinc-800 hover:border-zinc-700"
-                } ${isLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-semibold text-white">{label}</span>
-                    <p className="text-[10px] text-zinc-500 mt-1">{desc}</p>
-                  </div>
-                  {isLoading && (
-                    <Loader2 size={12} className="animate-spin text-violet-400" />
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-          <p className="text-[10px] text-zinc-600 mt-3">
-            {agentMode === "on-demand" 
-              ? "L'agent attendra tes instructions avant d'agir sur les tâches sensibles"
-              : "L'agent travaillera de manière proactive et autonome"
-            }
-          </p>
+  return (
+    <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+      <div className="flex items-center gap-3 mb-4">
+        <Activity size={16} className="text-emerald-400" />
+        <div>
+          <h2 className="text-sm font-medium text-white">Mode Agent</h2>
+          <p className="text-[11px] text-zinc-500">Comment l&apos;agent travaille</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        {modes.map(m => (
+          <button key={m.id} onClick={() => updateMode(m.id)} disabled={saving}
+            className={`flex-1 p-3.5 rounded-xl border text-left transition-all ${
+              mode === m.id ? "border-blue-500/40 bg-blue-500/5" : "border-white/[0.06] hover:border-white/[0.12] bg-white/[0.01]"
+            } ${saving ? "opacity-60" : ""}`}>
+            <div className="flex items-center gap-2">
+              <span className="text-base">{m.icon}</span>
+              <div>
+                <span className="text-xs font-medium text-white">{m.label}</span>
+                <p className="text-[10px] text-zinc-500 mt-0.5">{m.desc}</p>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-zinc-600 mt-3">
+        {mode === "on-demand" ? "L'agent attend tes instructions pour agir" : "L'agent exécute les tâches de fond et crons automatiquement"}
+      </p>
+    </div>
+  );
+}
+
+// ── Main Settings Page ──
+export default function SettingsPage() {
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="px-4 py-6 max-w-2xl mx-auto space-y-4">
+        <div>
+          <h1 className="text-lg font-semibold text-white">Paramètres</h1>
+          <p className="text-xs text-zinc-500 mt-1">Configure ton agent S-Rank.</p>
         </div>
 
-        {/* Trust Level */}
-        <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
-          <div className="flex items-center gap-2 mb-4">
+        <AgentModeCard />
+
+        <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+          <div className="flex items-center gap-3 mb-4">
             <Brain size={16} className="text-purple-400" />
-            <h2 className="text-sm font-semibold text-white">Niveau de confiance</h2>
+            <div>
+              <h2 className="text-sm font-medium text-white">Niveau de confiance</h2>
+              <p className="text-[11px] text-zinc-500">Contrôle l&apos;autonomie de l&apos;agent</p>
+            </div>
           </div>
           <TrustSlider />
         </div>
 
-        {/* Orchestrator Mode */}
         <OrchestratorToggle />
-
-        {/* Email */}
         <EmailCard />
-
-        {/* Wallet */}
         <WalletCard />
-
-        {/* Other settings sections would go here */}
       </div>
     </div>
   );
