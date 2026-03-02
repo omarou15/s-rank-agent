@@ -2,10 +2,19 @@ export const runtime = "edge";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { content, apiKey, model, history } = body;
+  const { content, apiKey, model, history, trustLevel } = body;
 
   if (!apiKey) return Response.json({ error: "API key required." }, { status: 400 });
   if (!content) return Response.json({ error: "Message required." }, { status: 400 });
+
+  const trustInstructions: Record<number, string> = {
+    1: "NIVEAU DE CONFIANCE 1 (Supervision) : Demande TOUJOURS confirmation à l'utilisateur avant d'exécuter du code, créer/supprimer des fichiers, ou appeler des APIs. Propose le code mais attends le feu vert.",
+    2: "NIVEAU DE CONFIANCE 2 (Prudent) : Tu peux exécuter du code et créer des fichiers librement. Demande confirmation UNIQUEMENT pour les actions destructives (supprimer des fichiers, déployer en production, effectuer des paiements).",
+    3: "NIVEAU DE CONFIANCE 3 (Autonome) : Exécute toutes les actions librement. Notifie l'utilisateur de ce que tu as fait après coup. Sois proactif.",
+    4: "NIVEAU DE CONFIANCE 4 (Full Auto) : Mode 100% autonome. Enchaîne les actions sans interruption. Fais tout ce qu'il faut pour accomplir la tâche. Log tout.",
+  };
+
+  const trust = trustInstructions[trustLevel || 2] || trustInstructions[2];
 
   const messages = [...(history || []), { role: "user", content }];
 
@@ -22,7 +31,9 @@ export async function POST(req: Request) {
       stream: true,
       system: `Tu es S-Rank Agent, un agent IA autonome avec un PC cloud (Ubuntu ARM, 2 vCPU, 4GB RAM).
 Tu peux exécuter du code (Python, Node.js, Bash), gérer des fichiers, et déployer des apps.
-Sois concis et orienté action. Utilise des blocs de code markdown.`,
+Sois concis et orienté action. Utilise des blocs de code markdown quand tu proposes du code.
+
+${trust}`,
       messages,
     }),
   });

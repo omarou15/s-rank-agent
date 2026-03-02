@@ -110,10 +110,11 @@ export default function ChatPage() {
 
     try {
       const history = messages.filter((m) => m.status === "complete").map((m) => ({ role: m.role, content: m.content }));
+      const trustLevel = parseInt(localStorage.getItem("s-rank-trust-level") || "2");
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, apiKey, history }),
+        body: JSON.stringify({ content, apiKey, history, trustLevel }),
       });
 
       if (!response.ok) {

@@ -1,148 +1,140 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TRUST_LEVELS, PLAN_LIMITS } from "@/lib/shared";
-import type { TrustLevel, Plan } from "@/lib/shared";
-import { useApi } from "@/lib/hooks/use-api";
-import { useAppStore } from "@/lib/stores/app-store";
+import { TrustSlider } from "@/components/shared/trust-slider";
+import { Key, Server, Activity, ExternalLink } from "lucide-react";
 
 export default function SettingsPage() {
-  const { get, post, loading } = useApi();
-  const appStore = useAppStore();
-
   const [apiKey, setApiKey] = useState("");
-  const [apiKeyValid, setApiKeyValid] = useState(appStore.user?.apiKeyValid || false);
-  const [trustLevel, setTrustLevel] = useState<TrustLevel>((appStore.user?.trustLevel as TrustLevel) || 2);
-  const [agentMode, setAgentMode] = useState<"on-demand" | "always-on">((appStore.user?.agentMode as any) || "on-demand");
-  const [currentPlan, setCurrentPlan] = useState<Plan>((appStore.user?.plan as Plan) || "starter");
-  const [saving, setSaving] = useState(false);
+  const [hasKey, setHasKey] = useState(false);
+  const [serverStatus, setServerStatus] = useState<any>(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    get<{ user: any; server: any }>("/settings/profile")
-      .then((data) => {
-        if (data.user) {
-          setApiKeyValid(data.user.apiKeyValid || false);
-          setTrustLevel(data.user.trustLevel || 2);
-          setAgentMode(data.user.agentMode || "on-demand");
-          setCurrentPlan(data.user.plan || "starter");
-        }
-      })
-      .catch(() => {});
+    const stored = localStorage.getItem("s-rank-api-key");
+    if (stored) { setHasKey(true); setApiKey(stored); }
+
+    fetch("/api/server/status").then(r => r.json()).then(setServerStatus).catch(() => {});
   }, []);
 
-  const saveApiKey = async () => {
-    if (!apiKey.startsWith("sk-")) { setMessage("La cl\u00E9 doit commencer par sk-"); return; }
-    setSaving(true); setMessage("");
-    try {
-      await post("/settings/api-key", { apiKey });
-      setApiKeyValid(true);
-      setApiKey("");
-      setMessage("\u2705 Cl\u00E9 valid\u00E9e et sauvegard\u00E9e !");
-    } catch (err: any) {
-      setMessage(`\u274C ${err.message}`);
-    } finally { setSaving(false); }
+  const saveKey = () => {
+    if (!apiKey.startsWith("sk-ant-")) { setMessage("La clé doit commencer par sk-ant-"); return; }
+    localStorage.setItem("s-rank-api-key", apiKey);
+    setHasKey(true);
+    setMessage("Clé sauvegardée !");
+    setTimeout(() => setMessage(""), 3000);
   };
 
-  const saveTrustLevel = async (level: TrustLevel) => {
-    setTrustLevel(level);
-    try { await post("/settings/trust-level", { level }); } catch { /* ignore */ }
+  const removeKey = () => {
+    localStorage.removeItem("s-rank-api-key");
+    setApiKey("");
+    setHasKey(false);
+    setMessage("Clé supprimée");
+    setTimeout(() => setMessage(""), 3000);
   };
-
-  const saveAgentMode = async (mode: "on-demand" | "always-on") => {
-    setAgentMode(mode);
-    try { await post("/settings/agent-mode", { mode }); } catch { /* ignore */ }
-  };
-
-  const trust = TRUST_LEVELS[trustLevel];
-  const planLimits = PLAN_LIMITS[currentPlan];
-  const trustColors = { 1: "bg-srank-green", 2: "bg-srank-cyan", 3: "bg-srank-amber", 4: "bg-srank-red" };
 
   return (
-    <div className="h-screen overflow-y-auto">
-      <div className="px-6 py-6 max-w-3xl mx-auto space-y-8">
-        <h1 className="text-lg font-semibold">Param\u00E8tres</h1>
+    <div className="h-full overflow-y-auto">
+      <div className="px-4 py-6 max-w-2xl mx-auto space-y-6">
+        <h1 className="text-lg font-semibold text-white">Paramètres</h1>
 
         {/* API Key */}
-        <div className="p-5 rounded-xl bg-srank-card border border-srank-border">
-          <h2 className="text-sm font-semibold mb-1">Cl\u00E9 API Claude</h2>
-          <p className="text-xs text-srank-text-muted mb-4">
-            Votre propre cl\u00E9 Anthropic. Factur\u00E9 directement sur votre compte.{" "}
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" className="text-srank-primary hover:underline">Obtenir une cl\u00E9</a>
+        <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
+          <div className="flex items-center gap-2 mb-1">
+            <Key size={16} className="text-violet-400" />
+            <h2 className="text-sm font-semibold text-white">Clé API Claude</h2>
+          </div>
+          <p className="text-xs text-zinc-500 mb-4">
+            Modèle BYOK — ta clé reste dans ton navigateur.{" "}
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer"
+              className="text-violet-400 hover:text-violet-300 inline-flex items-center gap-0.5">
+              Obtenir une clé <ExternalLink size={10} />
+            </a>
           </p>
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`w-2 h-2 rounded-full ${apiKeyValid ? "bg-srank-green" : "bg-srank-red"}`} />
-            <span className="text-xs">{apiKeyValid ? "Cl\u00E9 valide" : "Aucune cl\u00E9 configur\u00E9e"}</span>
+          <div className="flex items-center gap-2 mb-3">
+            <span className={`w-2 h-2 rounded-full ${hasKey ? "bg-emerald-400" : "bg-red-400"}`} />
+            <span className="text-xs text-zinc-400">{hasKey ? "Clé configurée" : "Aucune clé"}</span>
           </div>
           <div className="flex gap-2">
             <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-ant-..." className="flex-1 bg-srank-bg border border-srank-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-srank-primary placeholder:text-srank-text-muted" />
-            <button onClick={saveApiKey} disabled={saving || !apiKey}
-              className="px-4 py-2 text-xs bg-srank-primary text-white rounded-lg hover:bg-srank-primary-600 disabled:opacity-50 transition-colors">
-              {saving ? "Validation..." : "Sauvegarder"}
+              placeholder="sk-ant-api03-..."
+              className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 placeholder:text-zinc-600" />
+            <button onClick={saveKey} className="px-4 py-2 text-xs bg-violet-600 text-white rounded-lg hover:bg-violet-500">
+              Sauvegarder
             </button>
           </div>
-          {message && <p className="text-xs mt-2">{message}</p>}
+          {hasKey && (
+            <button onClick={removeKey} className="text-xs text-red-400 hover:text-red-300 mt-2">
+              Supprimer la clé
+            </button>
+          )}
+          {message && <p className="text-xs text-emerald-400 mt-2">{message}</p>}
         </div>
 
-        {/* Trust Level */}
-        <div className="p-5 rounded-xl bg-srank-card border border-srank-border">
-          <h2 className="text-sm font-semibold mb-1">Niveau de confiance</h2>
-          <p className="text-xs text-srank-text-muted mb-4">Contr\u00F4le le degr\u00E9 d'autonomie de l'agent.</p>
-          <div className="flex gap-2 mb-4">
-            {([1, 2, 3, 4] as TrustLevel[]).map((level) => (
-              <button key={level} onClick={() => saveTrustLevel(level)}
-                className={`flex-1 py-3 rounded-xl border-2 text-center transition-all ${
-                  trustLevel === level ? "border-srank-primary bg-srank-primary/5" : "border-srank-border hover:border-srank-primary/30"
-                }`}>
-                <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${trustColors[level]}`} />
-                <span className="text-xs font-semibold">{level}</span>
-              </button>
-            ))}
+        {/* Trust Slider */}
+        <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
+          <h2 className="text-sm font-semibold text-white mb-4">Niveau de confiance</h2>
+          <TrustSlider />
+        </div>
+
+        {/* Server Status */}
+        <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
+          <div className="flex items-center gap-2 mb-4">
+            <Server size={16} className="text-cyan-400" />
+            <h2 className="text-sm font-semibold text-white">Serveur</h2>
           </div>
-          <div className="p-3 bg-srank-bg rounded-lg">
-            <p className="text-xs font-semibold text-srank-text-primary">{trust.name}</p>
-            <p className="text-xs text-srank-text-muted mt-1">{trust.description}</p>
-          </div>
+          {serverStatus?.status === "running" ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-emerald-400">En ligne</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-zinc-950 rounded-lg p-3">
+                  <p className="text-[10px] text-zinc-500 uppercase">IP</p>
+                  <p className="text-sm text-white font-mono">{serverStatus.server?.ip || "—"}</p>
+                </div>
+                <div className="bg-zinc-950 rounded-lg p-3">
+                  <p className="text-[10px] text-zinc-500 uppercase">Type</p>
+                  <p className="text-sm text-white">{serverStatus.server?.type || "—"}</p>
+                </div>
+                <div className="bg-zinc-950 rounded-lg p-3">
+                  <p className="text-[10px] text-zinc-500 uppercase">Location</p>
+                  <p className="text-sm text-white">{serverStatus.server?.location || "—"}</p>
+                </div>
+                <div className="bg-zinc-950 rounded-lg p-3">
+                  <p className="text-[10px] text-zinc-500 uppercase">Uptime</p>
+                  <p className="text-sm text-white">{serverStatus.uptime ? `${Math.round(serverStatus.uptime / 60)} min` : "—"}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-400" />
+              <span className="text-xs text-red-400">Hors ligne</span>
+            </div>
+          )}
         </div>
 
         {/* Agent Mode */}
-        <div className="p-5 rounded-xl bg-srank-card border border-srank-border">
-          <h2 className="text-sm font-semibold mb-4">Mode de l'agent</h2>
+        <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity size={16} className="text-emerald-400" />
+            <h2 className="text-sm font-semibold text-white">Mode agent</h2>
+          </div>
           <div className="flex gap-3">
             {[
-              { mode: "on-demand" as const, label: "On-Demand", desc: "L'agent r\u00E9pond quand tu lui parles" },
-              { mode: "always-on" as const, label: "Always-On", desc: "L'agent travaille en continu en arri\u00E8re-plan" },
-            ].map(({ mode, label, desc }) => (
-              <button key={mode} onClick={() => saveAgentMode(mode)}
-                className={`flex-1 p-4 rounded-xl border-2 text-left transition-all ${
-                  agentMode === mode ? "border-srank-primary bg-srank-primary/5" : "border-srank-border hover:border-srank-primary/30"
+              { mode: "on-demand", label: "On-Demand", desc: "Répond quand tu lui parles" },
+              { mode: "always-on", label: "Always-On", desc: "Travaille en continu (bientôt)", disabled: true },
+            ].map(({ mode, label, desc, disabled }) => (
+              <button key={mode} disabled={disabled}
+                className={`flex-1 p-4 rounded-xl border text-left transition-all ${
+                  mode === "on-demand" ? "border-violet-500 bg-violet-500/5" : "border-zinc-800 opacity-50 cursor-not-allowed"
                 }`}>
-                <span className="text-xs font-semibold">{label}</span>
-                <p className="text-[10px] text-srank-text-muted mt-1">{desc}</p>
+                <span className="text-xs font-semibold text-white">{label}</span>
+                <p className="text-[10px] text-zinc-500 mt-1">{desc}</p>
               </button>
             ))}
-          </div>
-        </div>
-
-        {/* Plan */}
-        <div className="p-5 rounded-xl bg-srank-card border border-srank-border">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold">Plan actuel</h2>
-            <span className="px-2 py-0.5 text-[10px] font-bold bg-srank-primary/10 text-srank-primary rounded-full uppercase">{currentPlan}</span>
-          </div>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            {(["starter", "pro", "business"] as Plan[]).map((plan) => {
-              const limits = PLAN_LIMITS[plan];
-              const isCurrent = currentPlan === plan;
-              return (
-                <div key={plan} className={`p-3 rounded-lg border ${isCurrent ? "border-srank-primary bg-srank-primary/5" : "border-srank-border"}`}>
-                  <p className="text-xs font-semibold capitalize">{plan}</p>
-                  <p className="text-lg font-bold mt-1">{limits.price === 0 ? "Gratuit" : `${limits.price}\u20AC`}</p>
-                  <p className="text-[10px] text-srank-text-muted">{limits.serverSize}</p>
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>
