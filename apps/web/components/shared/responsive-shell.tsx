@@ -20,12 +20,23 @@ const NAV_ITEMS = [
 
 export function ResponsiveShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [agentWorking, setAgentWorking] = useState(false);
   const pathname = usePathname();
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  // Listen for agent working state
+  useEffect(() => {
+    const check = () => setAgentWorking(localStorage.getItem("s-rank-agent-working") === "true");
+    check();
+    const handler = (e: StorageEvent) => { if (e.key === "s-rank-agent-working") check(); };
+    window.addEventListener("storage", handler);
+    const interval = setInterval(check, 1000);
+    return () => { window.removeEventListener("storage", handler); clearInterval(interval); };
+  }, []);
 
   // Close on escape
   useEffect(() => {
@@ -86,6 +97,12 @@ export function ResponsiveShell({ children }: { children: React.ReactNode }) {
               >
                 <span className="text-base">{item.icon}</span>
                 <span>{item.label}</span>
+                {item.href === "/chat" && agentWorking && (
+                  <span className="ml-auto flex items-center gap-1">
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                    <span className="text-[10px] text-emerald-400">actif</span>
+                  </span>
+                )}
               </Link>
             );
           })}

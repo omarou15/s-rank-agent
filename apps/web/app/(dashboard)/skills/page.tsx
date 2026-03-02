@@ -115,10 +115,17 @@ export default function SkillsPage() {
   const [installing, setInstalling] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("s-rank-installed-skills");
-    if (stored) {
-      const ids = JSON.parse(stored) as string[];
+    const storedIds = localStorage.getItem("s-rank-installed-skill-ids");
+    if (storedIds) {
+      const ids = JSON.parse(storedIds) as string[];
       setSkills((prev) => prev.map((s) => ({ ...s, installed: ids.includes(s.id) })));
+    } else {
+      // Default: Web Scraper Pro pre-installed
+      const defaultIds = ["1"];
+      setSkills((prev) => prev.map((s) => ({ ...s, installed: defaultIds.includes(s.id) })));
+      localStorage.setItem("s-rank-installed-skill-ids", JSON.stringify(defaultIds));
+      const defaultNames = SKILLS.filter(s => defaultIds.includes(s.id)).map(s => s.name);
+      localStorage.setItem("s-rank-installed-skills", JSON.stringify(defaultNames));
     }
   }, []);
 
@@ -126,8 +133,12 @@ export default function SkillsPage() {
     setInstalling(id);
     await new Promise((r) => setTimeout(r, 1200));
     setSkills((prev) => prev.map((s) => s.id === id ? { ...s, installed: true } : s));
-    const installedSkills = skills.filter((s) => s.installed || s.id === id);
-    localStorage.setItem("s-rank-installed-skills", JSON.stringify(installedSkills.map((s) => s.name)));
+    // Save IDs for persistence
+    const installedIds = skills.filter((s) => s.installed || s.id === id).map((s) => s.id);
+    localStorage.setItem("s-rank-installed-skill-ids", JSON.stringify(installedIds));
+    // Save names for chat system prompt
+    const installedNames = skills.filter((s) => s.installed || s.id === id).map((s) => s.name);
+    localStorage.setItem("s-rank-installed-skills", JSON.stringify(installedNames));
     // Broadcast to chat via storage event
     const skillName = skills.find(s => s.id === id)?.name || "Skill";
     localStorage.setItem("s-rank-config-event", JSON.stringify({
@@ -146,8 +157,10 @@ export default function SkillsPage() {
 
   const uninstallSkill = (id: string) => {
     setSkills((prev) => prev.map((s) => s.id === id ? { ...s, installed: false } : s));
-    const installedSkills = skills.filter((s) => s.installed && s.id !== id);
-    localStorage.setItem("s-rank-installed-skills", JSON.stringify(installedSkills.map((s) => s.name)));
+    const remainingIds = skills.filter((s) => s.installed && s.id !== id).map((s) => s.id);
+    localStorage.setItem("s-rank-installed-skill-ids", JSON.stringify(remainingIds));
+    const remainingNames = skills.filter((s) => s.installed && s.id !== id).map((s) => s.name);
+    localStorage.setItem("s-rank-installed-skills", JSON.stringify(remainingNames));
     const skillName = skills.find(s => s.id === id)?.name || "Skill";
     localStorage.setItem("s-rank-config-event", JSON.stringify({
       type: "skill_removed",

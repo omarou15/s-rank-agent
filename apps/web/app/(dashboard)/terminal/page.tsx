@@ -275,7 +275,17 @@ Environnement: Ubuntu ARM, Python 3, Node.js, serveur cloud.`,
             disabled={running}
             className="flex-1 bg-transparent text-white text-sm font-mono focus:outline-none placeholder:text-zinc-600 disabled:opacity-50"
           />
-          {running && <Loader2 size={14} className="text-violet-400 animate-spin" />}
+          {running ? (
+            <Loader2 size={14} className="text-violet-400 animate-spin" />
+          ) : (
+            <button
+              onClick={() => execCommand(command)}
+              disabled={!command.trim()}
+              className="p-1 text-zinc-500 hover:text-emerald-400 disabled:opacity-30 transition-colors"
+            >
+              <Zap size={14} />
+            </button>
+          )}
         </div>
       </div>
     </div>

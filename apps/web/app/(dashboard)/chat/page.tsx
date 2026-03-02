@@ -127,6 +127,17 @@ export default function ChatPage() {
   const keyInputRef = useRef<HTMLInputElement>(null);
   const STORAGE_KEY = "s-rank-chat-messages";
 
+  // ── Warn user if leaving while agent is working ──
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (streaming) { e.preventDefault(); e.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    // Broadcast working state to other pages (sidebar indicator)
+    localStorage.setItem("s-rank-agent-working", streaming ? "true" : "false");
+    return () => { window.removeEventListener("beforeunload", handleBeforeUnload); };
+  }, [streaming]);
+
   // ── Load state ──
   useEffect(() => {
     const stored = localStorage.getItem("s-rank-api-key");
