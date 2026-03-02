@@ -137,6 +137,17 @@ export default function SettingsPage() {
             ))}
           </div>
         </div>
+
+        {/* Billing link */}
+        <a href="/settings/billing" className="block p-5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-violet-500/30 transition-colors">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-white">Abonnement & Facturation</h2>
+              <p className="text-xs text-zinc-500 mt-1">Gérer ton plan, ta carte bancaire, tes factures</p>
+            </div>
+            <span className="text-zinc-600">→</span>
+          </div>
+        </a>
       </div>
     </div>
   );

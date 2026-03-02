@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/skills", icon: "🧩", label: "Skills" },
   { href: "/monitoring", icon: "📊", label: "Monitoring" },
   { href: "/settings", icon: "⚙️", label: "Paramètres" },
+  { href: "/settings/billing", icon: "💳", label: "Abonnement" },
 ];
 
 export function ResponsiveShell({ children }: { children: React.ReactNode }) {
