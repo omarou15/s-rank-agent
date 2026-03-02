@@ -29,6 +29,8 @@ const DEFAULT_CONNECTORS: Connector[] = [
     enabled: false, token: "", status: "disconnected", tokenGuide: "https://dashboard.stripe.com/apikeys", tokenPlaceholder: "sk_test_..." },
   { id: "vercel", name: "Vercel", icon: "▲", description: "Déployer, preview, logs", category: "Déploiement",
     enabled: false, token: "", status: "disconnected", tokenGuide: "https://vercel.com/account/tokens", tokenPlaceholder: "vcp_..." },
+  { id: "clerk", name: "Clerk", icon: "🔐", description: "Gérer utilisateurs, sessions, invitations, bans", category: "Auth",
+    enabled: false, token: "", status: "disconnected", tokenGuide: "https://dashboard.clerk.com/last-active?path=api-keys", tokenPlaceholder: "sk_test_..." },
 ];
 
 export default function ConnectorsPage() {
