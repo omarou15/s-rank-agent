@@ -8,7 +8,7 @@ interface ChatInputProps { onSend: (message: string, files?: UploadedFile[]) => 
 function getCat(n: string) { const e = n.split(".").pop()?.toLowerCase() || ""; if (["png","jpg","jpeg","gif","svg","webp"].includes(e)) return "image"; if (["ts","tsx","js","jsx","py","sh","html","css","json","md","csv","sql"].includes(e)) return "code"; return "default"; }
 function fmtSize(b: number) { if (b < 1024) return b + " B"; if (b < 1048576) return (b/1024).toFixed(1) + " KB"; return (b/1048576).toFixed(1) + " MB"; }
 const ICONS: Record<string, any> = { image: Image, code: FileCode, default: FileText };
-const IMG_EXTS = ["png","jpg","jpeg","gif","svg","webp"];
+const IMG_EXTS = ["png","jpg","jpeg","gif","webp"];
 
 export function ChatInput({ onSend, disabled, placeholder = "Demande quelque chose..." }: ChatInputProps) {
   const [value, setValue] = useState("");
@@ -30,16 +30,48 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
     setValue(""); setFiles([]);
   };
 
-  const upload = async (file: File) => {
+  const addFile = async (file: File) => {
     setUploading(true);
     try {
-      const b64 = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res((r.result as string).split(",")[1] || ""); r.onerror = rej; r.readAsDataURL(file); });
-      const path = `/home/agent/uploads/${file.name}`;
+      // Read as base64
+      const b64 = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res((r.result as string).split(",")[1] || "");
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
       const isImage = IMG_EXTS.includes(ext);
-      const r = await fetch("/api/files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, content: b64, encoding: "base64" }) });
-      if (r.ok) setFiles(p => [...p, { name: file.name, size: file.size, path, type: file.type, base64: isImage ? b64 : undefined }]);
-    } catch {} finally { setUploading(false); }
+
+      if (isImage) {
+        // Images: keep base64 locally for Claude vision — NO VPS upload needed
+        setFiles(p => [...p, {
+          name: file.name,
+          size: file.size,
+          path: `local://${file.name}`,
+          type: file.type || `image/${ext === "jpg" ? "jpeg" : ext}`,
+          base64: b64,
+        }]);
+      } else {
+        // Non-images: upload to VPS for agent to use
+        const path = `/home/agent/uploads/${file.name}`;
+        try {
+          await fetch("/api/files", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path, content: b64, encoding: "base64" }),
+          });
+        } catch {
+          // VPS upload failed — still add file reference
+        }
+        setFiles(p => [...p, { name: file.name, size: file.size, path, type: file.type }]);
+      }
+    } catch (err) {
+      console.error("File read error:", err);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const hasContent = value.trim().length > 0 || files.length > 0;
@@ -55,7 +87,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
           border: `1px solid ${focused ? "rgba(10,132,255,0.3)" : dragOver ? "rgba(10,132,255,0.2)" : "rgba(255,255,255,0.08)"}`,
           boxShadow: focused ? "0 0 0 3px rgba(10,132,255,0.08), 0 8px 32px rgba(0,0,0,0.3)" : "0 4px 24px rgba(0,0,0,0.2)",
         }}
-        onDrop={(e) => { e.preventDefault(); setDragOver(false); Array.from(e.dataTransfer.files).forEach(upload); }}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); Array.from(e.dataTransfer.files).forEach(addFile); }}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}>
 
@@ -77,7 +109,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
           </div>
         )}
 
-        {/* File chips */}
+        {/* File chips (non-images) */}
         {files.filter(f => !f.base64).length > 0 && (
           <div className="flex flex-wrap gap-1.5 px-4 pt-3">
             {files.filter(f => !f.base64).map((f, i) => { const I = ICONS[getCat(f.name)]; return (
@@ -97,7 +129,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
             className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all disabled:opacity-30">
             {uploading ? <Loader2 size={16} className="animate-spin text-[#0A84FF]" /> : <Paperclip size={16} />}
           </button>
-          <input ref={fileRef} type="file" multiple accept="*/*" className="hidden" onChange={(e) => { if (e.target.files) Array.from(e.target.files).forEach(upload); e.target.value = ""; }} />
+          <input ref={fileRef} type="file" multiple accept="*/*" className="hidden" onChange={(e) => { if (e.target.files) Array.from(e.target.files).forEach(addFile); e.target.value = ""; }} />
 
           <textarea ref={taRef} value={value} onChange={(e) => setValue(e.target.value)}
             onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
