@@ -25,6 +25,7 @@ interface Message {
 function cleanForDisplay(content: string): string {
   return content
     .replace(/\[EXEC:\w+\][\s\S]*?\[\/EXEC\]/g, "")
+    .replace(/\[DELEGATE:\w+\][\s\S]*?\[\/DELEGATE\]/g, "")
     .replace(/\[ARTIFACT:[^\]]*\][\s\S]*?\[\/ARTIFACT\]/g, "")
     .replace(/\[MEMORY:[^\]]*\]/g, "")
     .replace(/\[CRON:[^\]]*\]/g, "")
@@ -36,11 +37,12 @@ function cleanForDisplay(content: string): string {
 function hasIncompleteExec(content: string): boolean {
   const execOpens = (content.match(/\[EXEC:\w+\]/g) || []).length;
   const execCloses = (content.match(/\[\/EXEC\]/g) || []).length;
+  const delOpens = (content.match(/\[DELEGATE:\w+\]/g) || []).length;
+  const delCloses = (content.match(/\[\/DELEGATE\]/g) || []).length;
   const artOpens = (content.match(/\[ARTIFACT:[^\]]*\]/g) || []).length;
   const artCloses = (content.match(/\[\/ARTIFACT\]/g) || []).length;
-  // Count triple backticks (must be even for complete blocks)
   const backticks = (content.match(/```/g) || []).length;
-  return execOpens > execCloses || artOpens > artCloses || backticks % 2 !== 0;
+  return execOpens > execCloses || delOpens > delCloses || artOpens > artCloses || backticks % 2 !== 0;
 }
 
 // Strip incomplete blocks from streaming content
@@ -48,12 +50,16 @@ function cleanForStreaming(content: string): string {
   let c = content;
   // Remove complete [EXEC] blocks
   c = c.replace(/\[EXEC:\w+\][\s\S]*?\[\/EXEC\]/g, "");
+  // Remove complete [DELEGATE] blocks
+  c = c.replace(/\[DELEGATE:\w+\][\s\S]*?\[\/DELEGATE\]/g, "");
   // Remove complete [ARTIFACT] blocks
   c = c.replace(/\[ARTIFACT:[^\]]*\][\s\S]*?\[\/ARTIFACT\]/g, "");
   // Remove complete ``` blocks
   c = c.replace(/```\w*\n[\s\S]*?```/g, "");
   // Remove incomplete [EXEC] (open but not closed)
   c = c.replace(/\[EXEC:\w+\][\s\S]*$/g, "");
+  // Remove incomplete [DELEGATE]
+  c = c.replace(/\[DELEGATE:\w+\][\s\S]*$/g, "");
   // Remove incomplete [ARTIFACT]
   c = c.replace(/\[ARTIFACT:[^\]]*\][\s\S]*$/g, "");
   // Remove incomplete ``` block (odd number of ```)
@@ -380,6 +386,15 @@ export default function ChatPage() {
   const getActiveConnectors = (): string[] => { try { const d = localStorage.getItem("s-rank-connectors"); if (!d) return []; return Object.entries(JSON.parse(d)).filter(([,v]) => v).map(([k]) => k); } catch { return []; } };
   const getTrustLevel = (): number => { try { return parseInt(localStorage.getItem("s-rank-trust-level") || "2"); } catch { return 2; } };
   const getMemoryContext = (): string => { try { const m = localStorage.getItem("s-rank-memory"); if (!m) return ""; const d = JSON.parse(m); const p: string[] = []; if (d.facts?.length) p.push("Faits: " + d.facts.join("; ")); if (d.style) p.push("Style: " + d.style); return p.join("\n"); } catch { return ""; } };
+  const getOrchestratorMode = (): boolean => { try { return localStorage.getItem("s-rank-orchestrator") === "true"; } catch { return false; } };
+
+  const parseDelegateBlocks = (content: string): { lang: string; brief: string }[] => {
+    const blocks: { lang: string; brief: string }[] = [];
+    const regex = /\[DELEGATE:(\w+)\]\n?([\s\S]*?)\[\/DELEGATE\]/g;
+    let match;
+    while ((match = regex.exec(content)) !== null) blocks.push({ lang: match[1], brief: match[2].trim() });
+    return blocks;
+  };
 
   const parseExecBlocks = (content: string): ExecBlock[] => {
     const blocks: ExecBlock[] = [];
@@ -458,6 +473,7 @@ export default function ChatPage() {
         memoryContext: getMemoryContext(),
         installedSkills: getInstalledSkills(),
         activeConnectors: getActiveConnectors(),
+        orchestratorMode: getOrchestratorMode(),
         userDir: USER_DIR,
         images,
       }),
@@ -588,26 +604,78 @@ export default function ChatPage() {
         // Process special tags
         await processSpecialTags(fullContent);
 
-        // Parse exec blocks
+        // Parse exec blocks AND delegate blocks
         const execBlocks = parseExecBlocks(fullContent);
+        const delegateBlocks = parseDelegateBlocks(fullContent);
 
-        // ── PHASE 2: No exec blocks → response finale, exit loop ──
-        if (execBlocks.length === 0) {
+        // ── PHASE 2: No action blocks → response finale, exit loop ──
+        if (execBlocks.length === 0 && delegateBlocks.length === 0) {
           setMessages(prev => prev.map(m =>
             m.id === currentMsgId ? { ...m, content: fullContent, status: "complete" } : m
           ));
           break;
         }
 
-        // ── PHASE 3: Execute blocks ──
+        // ── PHASE 3: Handle DELEGATE blocks (orchestrator mode) ──
+        let allExecBlocks = [...execBlocks];
+
+        if (delegateBlocks.length > 0) {
+          for (const del of delegateBlocks) {
+            if (stopRef.current) break;
+
+            // Show delegation indicator
+            setMessages(prev => [...prev, {
+              id: `delegate-${Date.now()}`, role: "system",
+              content: `🤖 Délégation au sub-agent (${del.lang})...`,
+              status: "complete", timestamp: Date.now(),
+            }]);
+
+            try {
+              const delRes = await fetch("/api/chat/delegate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  brief: del.brief,
+                  language: del.lang,
+                  apiKey,
+                }),
+              });
+              const delData = await delRes.json();
+
+              if (delData.code) {
+                // Convert delegate result into an exec block
+                allExecBlocks.push({
+                  lang: del.lang,
+                  code: delData.code,
+                  status: "pending",
+                });
+              } else {
+                // Sub-agent failed
+                allExecBlocks.push({
+                  lang: del.lang,
+                  code: `echo "Sub-agent error: ${delData.error || 'no code returned'}"`,
+                  status: "pending",
+                });
+              }
+            } catch (err: any) {
+              allExecBlocks.push({
+                lang: "bash",
+                code: `echo "Delegate error: ${err.message}"`,
+                status: "pending",
+              });
+            }
+          }
+        }
+
+        // ── PHASE 4: Execute blocks ──
         // Mark message as complete with exec blocks
         setMessages(prev => prev.map(m =>
-          m.id === currentMsgId ? { ...m, content: fullContent, status: "complete", execBlocks: execBlocks.map(b => ({ ...b, status: "pending" as const })) } : m
+          m.id === currentMsgId ? { ...m, content: fullContent, status: "complete", execBlocks: allExecBlocks.map(b => ({ ...b, status: "pending" as const })) } : m
         ));
 
         // Execute each block sequentially
         const executedBlocks: ExecBlock[] = [];
-        for (let i = 0; i < execBlocks.length; i++) {
+        for (let i = 0; i < allExecBlocks.length; i++) {
           if (stopRef.current) break;
 
           // Set block to running
@@ -618,7 +686,7 @@ export default function ChatPage() {
             return { ...m, execBlocks: u };
           }));
 
-          const result = await executeBlock(execBlocks[i], `${execBlocks[i].lang}: ${execBlocks[i].code.split("\n")[0].slice(0, 60)}`);
+          const result = await executeBlock(allExecBlocks[i], `${allExecBlocks[i].lang}: ${allExecBlocks[i].code.split("\n")[0].slice(0, 60)}`);
           executedBlocks.push(result);
 
           // Update block result in UI

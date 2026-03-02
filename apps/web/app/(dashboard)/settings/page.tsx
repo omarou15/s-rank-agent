@@ -2,7 +2,55 @@
 
 import { useState, useEffect } from "react";
 import { TrustSlider } from "@/components/shared/trust-slider";
-import { Key, Server, Activity, ExternalLink, Brain, Trash2, Mail, Wallet, ArrowUpRight, CheckCircle, XCircle, Loader2, AlertTriangle } from "lucide-react";
+import { Key, Server, Activity, ExternalLink, Brain, Trash2, Mail, Wallet, ArrowUpRight, CheckCircle, XCircle, Loader2, AlertTriangle, GitBranch } from "lucide-react";
+
+// ── Orchestrator Toggle ──
+function OrchestratorToggle() {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    setEnabled(localStorage.getItem("s-rank-orchestrator") === "true");
+  }, []);
+
+  const toggle = () => {
+    const next = !enabled;
+    setEnabled(next);
+    localStorage.setItem("s-rank-orchestrator", String(next));
+    localStorage.setItem("s-rank-config-event", JSON.stringify({
+      type: "orchestrator_mode",
+      message: next ? "Mode orchestrateur activé — l'agent délègue le code aux sub-agents" : "Mode direct activé — l'agent code lui-même",
+      ts: Date.now(),
+    }));
+  };
+
+  return (
+    <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <GitBranch size={16} className="text-amber-400" />
+          <div>
+            <h2 className="text-sm font-semibold text-white">Mode Orchestrateur</h2>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              {enabled ? "L'agent délègue le code à des sub-agents spécialisés" : "L'agent écrit et exécute le code lui-même"}
+            </p>
+          </div>
+        </div>
+        <button onClick={toggle}
+          className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? "bg-amber-500" : "bg-zinc-700"}`}>
+          <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+        </button>
+      </div>
+      {enabled && (
+        <div className="mt-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+          <p className="text-[11px] text-amber-400/70 leading-relaxed">
+            L&apos;agent planifie et supervise. Le code est généré par des sub-agents via API Claude.
+            Plus lent (+2-5s par délégation) mais meilleure qualité sur les projets complexes.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Wallet Component (existing)
 function WalletCard() {
@@ -226,6 +274,12 @@ export default function SettingsPage() {
           </div>
           <TrustSlider />
         </div>
+
+        {/* Orchestrator Mode */}
+        <OrchestratorToggle />
+
+        {/* Email */}
+        <EmailCard />
 
         {/* Wallet */}
         <WalletCard />
