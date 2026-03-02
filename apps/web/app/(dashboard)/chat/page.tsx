@@ -39,6 +39,8 @@ export default function ChatPage() {
     else setShowKeyInput(true);
     loadConversations();
     loadFolders();
+    // Hide sidebar on mobile by default
+    if (window.innerWidth < 768) setShowSidebar(false);
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -72,6 +74,8 @@ export default function ChatPage() {
           codeBlocks: parseCodeBlocks(m.content),
         })));
         setActiveConvId(id);
+        // Close sidebar on mobile
+        if (window.innerWidth < 768) setShowSidebar(false);
       }
     } catch {}
   };
@@ -255,10 +259,15 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-full bg-zinc-950">
+    <div className="flex h-full bg-zinc-950 relative">
+      {/* Sidebar overlay on mobile */}
+      {showSidebar && (
+        <div className="md:hidden fixed inset-0 bg-black/60 z-30" onClick={() => setShowSidebar(false)} />
+      )}
+
       {/* Sidebar */}
       {showSidebar && (
-        <div className="w-64 border-r border-zinc-800 flex flex-col bg-zinc-900/50 flex-shrink-0">
+        <div className="fixed md:static inset-y-0 left-0 z-40 w-64 border-r border-zinc-800 flex flex-col bg-zinc-900 flex-shrink-0">
           <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
             <button onClick={newChat} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-violet-600 text-white rounded-lg hover:bg-violet-500 flex-1 justify-center">
               <Plus size={14} /> Nouveau chat
@@ -337,8 +346,9 @@ export default function ChatPage() {
 
         {/* Header */}
         {!showSidebar && (
-          <div className="p-2 border-b border-zinc-800">
+          <div className="p-2 border-b border-zinc-800 flex items-center gap-2">
             <button onClick={() => setShowSidebar(true)} className="p-1 text-zinc-500 hover:text-white"><PanelLeft size={16} /></button>
+            <span className="text-xs text-zinc-500 truncate">{activeConvId ? conversations.find(c => c.id === activeConvId)?.title || "Chat" : "Nouveau chat"}</span>
           </div>
         )}
 

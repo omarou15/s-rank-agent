@@ -4,9 +4,21 @@ import { dark } from "@clerk/themes";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "S-Rank Agent",
-  description: "Ton PC cloud piloté par l'IA",
+  title: "S-Rank Agent — Ton PC cloud piloté par l'IA",
+  description: "Demande, il exécute. Code, fichiers, déploiements, APIs — Claude pilote ton serveur cloud. Zéro config, toute la puissance.",
   manifest: "/manifest.json",
+  metadataBase: new URL("https://web-phi-three-57.vercel.app"),
+  openGraph: {
+    title: "S-Rank Agent — Ton PC cloud piloté par l'IA",
+    description: "Demande, il exécute. Code, fichiers, déploiements, APIs — Claude pilote ton serveur cloud.",
+    siteName: "S-Rank Agent",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "S-Rank Agent — Ton PC cloud piloté par l'IA",
+    description: "Demande, il exécute. Code, fichiers, déploiements, APIs — Claude pilote ton serveur cloud.",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
