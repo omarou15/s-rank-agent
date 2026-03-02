@@ -166,9 +166,18 @@ export default function ChatPage() {
     try {
       const history = messages.filter(m => m.status === "complete").map(m => ({ role: m.role, content: m.content }));
       const trustLevel = parseInt(localStorage.getItem("s-rank-trust-level") || "2");
+
+      // Fetch memory context
+      let memoryContext = "";
+      try {
+        const memRes = await fetch("/api/memory/prompt");
+        const memData = await memRes.json();
+        memoryContext = memData.context || "";
+      } catch {}
+
       const response = await fetch("/api/chat/stream", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, apiKey, history, trustLevel }),
+        body: JSON.stringify({ content, apiKey, history, trustLevel, memoryContext }),
       });
 
       if (!response.ok) {
@@ -205,6 +214,12 @@ export default function ChatPage() {
       const codeBlocks = parseCodeBlocks(fullText);
       const finalMsgs = newMsgs.map(m => m.id === assistantId ? { ...m, content: fullText || "...", status: "complete" as const, codeBlocks } : m);
       setMessages(finalMsgs);
+
+      // Auto-save memory from [MEMORY:...] tags
+      const memMatches = fullText.matchAll(/\[MEMORY:([^\]]+)\]/g);
+      for (const match of memMatches) {
+        fetch("/api/memory/fact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fact: match[1].trim() }) }).catch(() => {});
+      }
 
       // Save conversation
       const convId = activeConvId || `conv-${Date.now()}`;

@@ -2,19 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { TrustSlider } from "@/components/shared/trust-slider";
-import { Key, Server, Activity, ExternalLink } from "lucide-react";
+import { Key, Server, Activity, ExternalLink, Brain, Trash2 } from "lucide-react";
 
 export default function SettingsPage() {
   const [apiKey, setApiKey] = useState("");
   const [hasKey, setHasKey] = useState(false);
   const [serverStatus, setServerStatus] = useState<any>(null);
   const [message, setMessage] = useState("");
+  const [memory, setMemory] = useState<any>(null);
+  const [memStyle, setMemStyle] = useState("");
 
   useEffect(() => {
     const stored = localStorage.getItem("s-rank-api-key");
     if (stored) { setHasKey(true); setApiKey(stored); }
-
     fetch("/api/server/status").then(r => r.json()).then(setServerStatus).catch(() => {});
+    fetch("/api/memory").then(r => r.json()).then(m => { setMemory(m); setMemStyle(m?.style || ""); }).catch(() => {});
   }, []);
 
   const saveKey = () => {
@@ -135,6 +137,62 @@ export default function SettingsPage() {
                 <p className="text-[10px] text-zinc-500 mt-1">{desc}</p>
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Memory */}
+        <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
+          <div className="flex items-center gap-2 mb-1">
+            <Brain size={16} className="text-cyan-400" />
+            <h2 className="text-sm font-semibold text-white">Mémoire long-terme</h2>
+          </div>
+          <p className="text-xs text-zinc-500 mb-4">L&apos;agent retient tes préférences et informations entre les conversations.</p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] text-zinc-500 uppercase block mb-1">Style de communication</label>
+              <div className="flex gap-2">
+                <input value={memStyle} onChange={(e) => setMemStyle(e.target.value)}
+                  placeholder="Ex: Concis et technique, en français"
+                  className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500 placeholder:text-zinc-600" />
+                <button onClick={() => {
+                  fetch("/api/memory/style", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ style: memStyle }) })
+                    .then(r => r.json()).then(setMemory);
+                }} className="px-3 py-2 text-xs bg-zinc-800 text-white rounded-lg hover:bg-zinc-700">OK</button>
+              </div>
+            </div>
+
+            {memory?.facts?.length > 0 && (
+              <div>
+                <label className="text-[10px] text-zinc-500 uppercase block mb-1">Faits retenus ({memory.facts.length})</label>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {memory.facts.map((fact: string, i: number) => (
+                    <div key={i} className="flex items-center gap-2 bg-zinc-950 rounded-lg px-3 py-1.5">
+                      <span className="text-xs text-zinc-300 flex-1">{fact}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {memory?.preferences && Object.keys(memory.preferences).length > 0 && (
+              <div>
+                <label className="text-[10px] text-zinc-500 uppercase block mb-1">Préférences</label>
+                <div className="bg-zinc-950 rounded-lg p-3 text-xs text-zinc-400 font-mono">
+                  {JSON.stringify(memory.preferences, null, 2)}
+                </div>
+              </div>
+            )}
+
+            <button onClick={() => {
+              if (confirm("Effacer toute la mémoire ?")) {
+                fetch("/api/memory", { method: "DELETE" }).catch(() => {});
+                setMemory({ preferences: {}, facts: [], style: "", context: "" });
+                setMemStyle("");
+              }
+            }} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300">
+              <Trash2 size={12} /> Effacer la mémoire
+            </button>
           </div>
         </div>
 

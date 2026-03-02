@@ -23,9 +23,27 @@ const SKILLS: Skill[] = [
   { id: "5", name: "API Builder", description: "APIs REST et GraphQL. Documentation auto, tests, déploiement.", category: "Development", author: "S-Rank", isOfficial: true, installs: 1420, rating: 46 },
   { id: "6", name: "SEO Optimizer", description: "Audit SEO, mots-clés, meta tags, sitemap, performance.", category: "Marketing", author: "S-Rank", isOfficial: true, installs: 980, rating: 44 },
   { id: "7", name: "PDF Generator", description: "Rapports PDF, factures, certificats à partir de données.", category: "Tools", author: "S-Rank", isOfficial: true, installs: 1100, rating: 45 },
+  // ── Fullstack SaaS Builder (flagship skill) ──
+  { id: "11", name: "Fullstack SaaS Builder", description: "Crée une app SaaS complète en une conversation. Next.js, auth, base de données, paiements Stripe, déploiement Vercel. De l'idée au MVP en live.", category: "Development", author: "S-Rank", isOfficial: true, installs: 4820, rating: 50 },
+  // ── API Integration Skills ──
+  { id: "12", name: "Stripe Integration", description: "Paiements, abonnements, checkout, webhooks, customer portal. Setup Stripe complet en 5 minutes.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 2100, rating: 48 },
+  { id: "13", name: "Clerk Auth Setup", description: "Authentification OAuth (Google, GitHub), JWT, webhooks, middleware. Prêt en 2 minutes.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 1950, rating: 47 },
+  { id: "14", name: "Vercel Deployer", description: "Déploiement auto sur Vercel. Preview deploys, domaine custom, variables d'environnement.", category: "DevOps", author: "S-Rank", isOfficial: true, installs: 1780, rating: 47 },
+  { id: "15", name: "Hetzner Cloud Manager", description: "Provisionner des VPS, Docker, firewalls, SSH. Infra cloud complète via API.", category: "DevOps", author: "S-Rank", isOfficial: true, installs: 1340, rating: 46 },
+  { id: "16", name: "Neon PostgreSQL", description: "Base de données serverless. Schema, migrations Drizzle ORM, branching DB.", category: "Data", author: "S-Rank", isOfficial: true, installs: 1560, rating: 46 },
+  { id: "17", name: "Upstash Redis", description: "Cache, sessions, rate limiting, queues. Redis serverless en 1 commande.", category: "Data", author: "S-Rank", isOfficial: true, installs: 1200, rating: 45 },
+  { id: "18", name: "Telegram Bot", description: "Créer et déployer un bot Telegram. Commandes, menus, notifications, webhooks.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 890, rating: 44 },
+  { id: "19", name: "GitHub Automator", description: "Repos, branches, PRs, issues, Actions. Automatise tout ton workflow Git.", category: "Development", author: "S-Rank", isOfficial: true, installs: 1650, rating: 47 },
+  { id: "20", name: "Twilio SMS/Voice", description: "Envoi de SMS, appels vocaux, vérification 2FA. Intégration Twilio complète.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 720, rating: 43 },
+  // ── Community Skills ──
   { id: "8", name: "Email Automator", description: "Templates email, envoi en masse, suivi des ouvertures.", category: "Marketing", author: "Community", isOfficial: false, installs: 540, rating: 42 },
   { id: "9", name: "Git Workflow", description: "Branches, merge, conflict resolution, changelog auto.", category: "Development", author: "Community", isOfficial: false, installs: 760, rating: 43 },
   { id: "10", name: "Database Manager", description: "Migrations, backups, queries optimisées, monitoring.", category: "Data", author: "Community", isOfficial: false, installs: 620, rating: 41 },
+  { id: "21", name: "Google Sheets Sync", description: "Lire, écrire, synchroniser des Google Sheets. Rapports automatisés.", category: "Data", author: "Community", isOfficial: false, installs: 480, rating: 40 },
+  { id: "22", name: "Discord Bot", description: "Bot Discord complet. Commandes, modération, webhooks, embeds.", category: "APIs", author: "Community", isOfficial: false, installs: 650, rating: 42 },
+  { id: "23", name: "Notion Connector", description: "Pages, databases, templates Notion. Sync bidirectionnel.", category: "Tools", author: "Community", isOfficial: false, installs: 390, rating: 39 },
+  { id: "24", name: "AWS S3 Manager", description: "Upload, download, buckets, permissions S3. CLI intégré.", category: "DevOps", author: "Community", isOfficial: false, installs: 510, rating: 41 },
+  { id: "25", name: "OpenAI Proxy", description: "Utiliser GPT-4o en parallèle de Claude pour comparaison de réponses.", category: "Tools", author: "Community", isOfficial: false, installs: 320, rating: 38 },
 ];
 
 export default function SkillsPage() {

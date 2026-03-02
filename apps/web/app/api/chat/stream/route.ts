@@ -2,7 +2,7 @@ export const runtime = "edge";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { content, apiKey, model, history, trustLevel } = body;
+  const { content, apiKey, model, history, trustLevel, memoryContext } = body;
 
   if (!apiKey) return Response.json({ error: "API key required." }, { status: 400 });
   if (!content) return Response.json({ error: "Message required." }, { status: 400 });
@@ -15,6 +15,7 @@ export async function POST(req: Request) {
   };
 
   const trust = trustInstructions[trustLevel || 2] || trustInstructions[2];
+  const memory = memoryContext || "";
 
   const messages = [...(history || []), { role: "user", content }];
 
@@ -33,7 +34,12 @@ export async function POST(req: Request) {
 Tu peux exécuter du code (Python, Node.js, Bash), gérer des fichiers, et déployer des apps.
 Sois concis et orienté action. Utilise des blocs de code markdown quand tu proposes du code.
 
-${trust}`,
+Quand l'utilisateur te dit quelque chose sur lui-même (son nom, son métier, ses préférences, ses projets), retiens-le en ajoutant [MEMORY:fait] dans ta réponse. Exemple: [MEMORY:L'utilisateur s'appelle Marc et travaille en marketing].
+
+Si l'utilisateur te demande de chercher sur le web, propose un script Python avec requests/beautifulsoup pour scraper l'info demandée, puis exécute-le.
+
+${trust}
+${memory ? `\nMÉMOIRE UTILISATEUR:\n${memory}` : ""}`,
       messages,
     }),
   });

@@ -133,6 +133,40 @@ app.get("/skills/marketplace", (c) => c.json({ skills: [
 ] }));
 app.get("/skills/installed", (c) => c.json({ skills: [] }));
 
+// ── Memory ──
+app.get("/memory", async (c) => {
+  try { return c.json(await vps("/memory")); }
+  catch { return c.json({ preferences: {}, facts: [], style: "", context: "" }); }
+});
+app.get("/memory/prompt", async (c) => {
+  try { return c.json(await vps("/memory/prompt")); }
+  catch { return c.json({ context: "" }); }
+});
+app.post("/memory/fact", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/memory/fact", { method: "POST", body: JSON.stringify(body) })); }
+  catch { return c.json({ error: "failed" }, 500); }
+});
+app.post("/memory/pref", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/memory/pref", { method: "POST", body: JSON.stringify(body) })); }
+  catch { return c.json({ error: "failed" }, 500); }
+});
+app.post("/memory/style", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/memory/style", { method: "POST", body: JSON.stringify(body) })); }
+  catch { return c.json({ error: "failed" }, 500); }
+});
+app.post("/memory/context", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/memory/context", { method: "POST", body: JSON.stringify(body) })); }
+  catch { return c.json({ error: "failed" }, 500); }
+});
+app.delete("/memory", async (c) => {
+  try { return c.json(await vps("/memory", { method: "DELETE" })); }
+  catch { return c.json({ error: "failed" }, 500); }
+});
+
 // ── Conversations (proxy to VPS) ──
 app.get("/conversations", async (c) => {
   try { return c.json(await vps("/conversations")); }
