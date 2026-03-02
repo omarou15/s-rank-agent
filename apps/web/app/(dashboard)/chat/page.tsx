@@ -6,7 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import {
   Loader2, CheckCircle, XCircle, ChevronDown, ChevronRight,
   ExternalLink, Key, Search, FileDown, FileText, FileSpreadsheet,
-  FileCode, FileImage, File, FileArchive, Plus, Code2, Sparkles
+  FileCode, FileImage, File, FileArchive, Plus, Code2, Sparkles, RotateCcw
 } from "lucide-react";
 
 // ── Types ──
@@ -330,6 +330,7 @@ export default function ChatPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [loopActive, setLoopActive] = useState(false);
   const [loopIteration, setLoopIteration] = useState(0);
+  const [vpsRebooting, setVpsRebooting] = useState(false);
   const stopRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
@@ -685,6 +686,38 @@ export default function ChatPage() {
 
   const clearChat = () => { setMessages([{ id: `w-${Date.now()}`, role: "assistant", content: "Nouveau sujet — que veux-tu faire ?", status: "complete", timestamp: Date.now() }]); };
 
+  const rebootVps = async () => {
+    if (vpsRebooting) return;
+    let hetznerToken = localStorage.getItem("s-rank-hetzner-token") || "";
+    if (!hetznerToken) {
+      const input = prompt("Token API Hetzner requis pour reboot.\nVa sur console.hetzner.cloud → Security → API Tokens → Generate\n\nColle ton token ici :");
+      if (!input) return;
+      hetznerToken = input.trim();
+      localStorage.setItem("s-rank-hetzner-token", hetznerToken);
+    }
+    setVpsRebooting(true);
+    addSystemMessage("⚡ Reboot du serveur en cours...");
+    try {
+      const res = await fetch("/api/vps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset", hetznerToken }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        addSystemMessage("✅ Serveur redémarré. Il sera opérationnel dans ~30 secondes.");
+        setTimeout(() => setVpsRebooting(false), 30000);
+      } else {
+        addSystemMessage(`❌ Échec reboot: ${data.error}`);
+        if (data.error?.includes("token") || data.error?.includes("401")) localStorage.removeItem("s-rank-hetzner-token");
+        setVpsRebooting(false);
+      }
+    } catch (err: any) {
+      addSystemMessage(`❌ Erreur: ${err.message}`);
+      setVpsRebooting(false);
+    }
+  };
+
   const filtered = searchQuery ? messages.filter(m => m.content.toLowerCase().includes(searchQuery.toLowerCase())) : messages;
 
   return (
@@ -704,6 +737,11 @@ export default function ChatPage() {
           </span>
         </div>
         <div className="flex items-center gap-1">
+          <button onClick={rebootVps} disabled={vpsRebooting}
+            className="p-2 text-white/25 hover:text-[#FF9F0A] rounded-xl transition-colors hover:bg-white/[0.04] disabled:opacity-30"
+            title="Reboot serveur">
+            <RotateCcw size={15} className={vpsRebooting ? "animate-spin" : ""} />
+          </button>
           <button onClick={() => setShowSearch(!showSearch)} className="p-2 text-white/25 hover:text-white/60 rounded-xl transition-colors hover:bg-white/[0.04]">
             <Search size={15} />
           </button>
