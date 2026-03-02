@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { href: "/files", icon: "📁", label: "Fichiers" },
   { href: "/connectors", icon: "🔌", label: "Connecteurs" },
   { href: "/skills", icon: "🧩", label: "Skills" },
-  { href: "/monitoring", icon: "📊", label: "Monitoring" },
+  { href: "/monitoring", icon: "🎯", label: "Command Center" },
   { href: "/settings", icon: "⚙️", label: "Paramètres" },
   { href: "/settings/billing", icon: "💳", label: "Abonnement" },
 ];
