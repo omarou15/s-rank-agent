@@ -61,6 +61,16 @@ app.post("/files/write", async (c) => {
   }
 });
 
+// Generic file upload (used by chat input)
+app.post("/files", async (c) => {
+  const body = await c.req.json();
+  try {
+    return c.json(await vps("/files/write", { method: "POST", body: JSON.stringify(body) }));
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
 app.post("/files/mkdir", async (c) => {
   const body = await c.req.json();
   try {

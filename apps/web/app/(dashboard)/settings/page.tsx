@@ -2,7 +2,84 @@
 
 import { useState, useEffect } from "react";
 import { TrustSlider } from "@/components/shared/trust-slider";
-import { Key, Server, Activity, ExternalLink, Brain, Trash2 } from "lucide-react";
+import { Key, Server, Activity, ExternalLink, Brain, Trash2, CreditCard, DollarSign, AlertTriangle } from "lucide-react";
+
+function SpendingLimits() {
+  const [dailyLimit, setDailyLimit] = useState("");
+  const [monthlyLimit, setMonthlyLimit] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("s-rank-spending-limits");
+    if (stored) {
+      const limits = JSON.parse(stored);
+      setDailyLimit(limits.daily || "");
+      setMonthlyLimit(limits.monthly || "");
+    }
+  }, []);
+
+  const saveLimits = () => {
+    localStorage.setItem("s-rank-spending-limits", JSON.stringify({ daily: dailyLimit, monthly: monthlyLimit }));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800">
+      <div className="flex items-center gap-2 mb-1">
+        <DollarSign size={16} className="text-amber-400" />
+        <h2 className="text-sm font-semibold text-white">Limites de dépenses</h2>
+      </div>
+      <p className="text-xs text-zinc-500 mb-4">
+        Contrôle tes dépenses en API Claude et services cloud. L&apos;agent s&apos;arrête quand la limite est atteinte.
+      </p>
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="text-[10px] text-zinc-500 uppercase block mb-1">Limite journalière</label>
+          <div className="flex items-center gap-1">
+            <input value={dailyLimit} onChange={(e) => setDailyLimit(e.target.value.replace(/[^0-9.]/g, ""))}
+              placeholder="5.00" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 placeholder:text-zinc-600" />
+            <span className="text-xs text-zinc-500">€/jour</span>
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] text-zinc-500 uppercase block mb-1">Limite mensuelle</label>
+          <div className="flex items-center gap-1">
+            <input value={monthlyLimit} onChange={(e) => setMonthlyLimit(e.target.value.replace(/[^0-9.]/g, ""))}
+              placeholder="50.00" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 placeholder:text-zinc-600" />
+            <span className="text-xs text-zinc-500">€/mois</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 mb-3">
+        <AlertTriangle size={12} className="text-amber-400" />
+        <span className="text-[10px] text-zinc-500">Inclut : tokens API Claude, serveurs Hetzner, services tiers connectés</span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button onClick={saveLimits} className="px-4 py-2 text-xs bg-violet-600 text-white rounded-lg hover:bg-violet-500">
+          Sauvegarder
+        </button>
+        {saved && <span className="text-xs text-emerald-400">✓ Limites enregistrées</span>}
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-zinc-800">
+        <div className="flex items-center gap-2 mb-2">
+          <CreditCard size={14} className="text-zinc-400" />
+          <span className="text-xs text-zinc-400">Carte bancaire</span>
+        </div>
+        <p className="text-[10px] text-zinc-500 mb-2">
+          Ta carte est gérée via Stripe. Elle sert à payer l&apos;abonnement et les services cloud additionnels.
+        </p>
+        <a href="/settings/billing" className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300">
+          Gérer ma carte et mon abonnement <ExternalLink size={10} />
+        </a>
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const [apiKey, setApiKey] = useState("");
@@ -195,6 +272,9 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+
+        {/* Spending Limits */}
+        <SpendingLimits />
 
         {/* Billing link */}
         <a href="/settings/billing" className="block p-5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-violet-500/30 transition-colors">

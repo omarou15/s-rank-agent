@@ -8,6 +8,7 @@ import { Menu, X } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/chat", icon: "💬", label: "Chat" },
+  { href: "/terminal", icon: "⬛", label: "Terminal" },
   { href: "/files", icon: "📁", label: "Fichiers" },
   { href: "/connectors", icon: "🔌", label: "Connecteurs" },
   { href: "/skills", icon: "🧩", label: "Skills" },
