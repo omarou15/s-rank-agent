@@ -178,12 +178,14 @@ function renderContent(content: string) {
   let clean = content.replace(/\[EXEC:\w+\][\s\S]*?\[\/EXEC\]/g, "").replace(/\[MEMORY:[^\]]*\]/g, "").replace(/\[CRON:[^\]]*\]/g, "").replace(/\[FILE:[^\]]*\]/g, "").trim();
   if (!clean) return null;
 
-  // Simple markdown: bold, inline code, links
+  // Simple markdown: bold, inline code, markdown links, then auto-link plain URLs
   const parts = clean.split("\n").map((line, i) => {
     let html = line
       .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
       .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 bg-zinc-800 rounded text-violet-300 text-[11px]">$1</code>')
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-violet-400 hover:underline">$1</a>');
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-violet-400 hover:underline">$1</a>')
+      // Auto-link plain http URLs (not already inside href or quotes)
+      .replace(/(?<!href="|">)(https?:\/\/[^\s<"]+)/g, '<a href="$1" target="_blank" rel="noopener" class="text-cyan-400 hover:underline inline-flex items-center gap-1">$1 ↗</a>');
     return <p key={i} className={`${line === "" ? "h-2" : ""}`} dangerouslySetInnerHTML={{ __html: html || "&nbsp;" }} />;
   });
 
