@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatInput } from "@/components/chat/chat-input";
 import {
   Bot, User, Key, Loader2, CheckCircle, XCircle,
-  ChevronDown, ChevronRight, ExternalLink, Settings, Zap, Search
+  ChevronDown, ChevronRight, ExternalLink, Settings, Zap, Search,
+  FileDown, FileText, FileSpreadsheet, FileCode, FileImage, File, FileArchive
 } from "lucide-react";
 
 // ── Types ──
@@ -85,10 +86,94 @@ function ExecBlockView({ block }: { block: ExecBlock }) {
   );
 }
 
+// ── File icon helper ──
+function getFileIcon(filename: string) {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  if (["png", "jpg", "jpeg", "gif", "svg", "webp", "ico"].includes(ext)) return <FileImage size={18} className="text-pink-400" />;
+  if (["csv", "xlsx", "xls", "tsv"].includes(ext)) return <FileSpreadsheet size={18} className="text-emerald-400" />;
+  if (["py", "js", "ts", "tsx", "jsx", "sh", "bash", "json", "yaml", "yml", "toml", "html", "css"].includes(ext)) return <FileCode size={18} className="text-cyan-400" />;
+  if (["zip", "tar", "gz", "rar", "7z"].includes(ext)) return <FileArchive size={18} className="text-amber-400" />;
+  if (["pdf"].includes(ext)) return <FileText size={18} className="text-red-400" />;
+  if (["doc", "docx", "txt", "md", "rtf"].includes(ext)) return <FileText size={18} className="text-blue-400" />;
+  return <File size={18} className="text-zinc-400" />;
+}
+
+// ── File card in chat ──
+function FileCard({ filepath }: { filepath: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
+  const filename = filepath.split("/").pop() || filepath;
+  const ext = filename.split(".").pop()?.toUpperCase() || "FILE";
+
+  const download = async () => {
+    setDownloading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/files/download?path=${encodeURIComponent(filepath)}`);
+      if (!res.ok) throw new Error("Fichier introuvable");
+      const data = await res.json();
+
+      if (data.base64) {
+        // Binary file (base64 encoded)
+        const byteChars = atob(data.base64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: data.mime || "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+      } else if (data.content !== undefined) {
+        // Text file
+        const blob = new Blob([data.content], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        throw new Error("Format de réponse invalide");
+      }
+    } catch (e: any) {
+      setError(e.message || "Erreur de téléchargement");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="my-2 flex items-center gap-3 p-3 rounded-xl border border-zinc-800 bg-zinc-950 hover:border-zinc-700 transition-colors">
+      <div className="shrink-0 w-10 h-10 rounded-lg bg-zinc-900 flex items-center justify-center">
+        {getFileIcon(filename)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-white truncate">{filename}</p>
+        <p className="text-[10px] text-zinc-500">{ext} · {filepath}</p>
+        {error && <p className="text-[10px] text-red-400 mt-0.5">{error}</p>}
+      </div>
+      <button onClick={download} disabled={downloading}
+        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-50 transition-colors">
+        {downloading ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />}
+        {downloading ? "..." : "Télécharger"}
+      </button>
+    </div>
+  );
+}
+
+// ── Parse FILE tags from content ──
+function parseFileTags(content: string): string[] {
+  const files: string[] = [];
+  const regex = /\[FILE:([^\]]+)\]/g;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    files.push(match[1].trim());
+  }
+  return files;
+}
+
 // ── Render message content (strip exec blocks, render markdown-lite) ──
 function renderContent(content: string) {
-  // Remove [EXEC]...[/EXEC] blocks, [MEMORY:...] tags, and [CRON:...] tags from display
-  let clean = content.replace(/\[EXEC:\w+\][\s\S]*?\[\/EXEC\]/g, "").replace(/\[MEMORY:[^\]]*\]/g, "").replace(/\[CRON:[^\]]*\]/g, "").trim();
+  // Remove [EXEC]...[/EXEC] blocks, [MEMORY:...] tags, [CRON:...] tags, and [FILE:...] tags from display
+  let clean = content.replace(/\[EXEC:\w+\][\s\S]*?\[\/EXEC\]/g, "").replace(/\[MEMORY:[^\]]*\]/g, "").replace(/\[CRON:[^\]]*\]/g, "").replace(/\[FILE:[^\]]*\]/g, "").trim();
   if (!clean) return null;
 
   // Simple markdown: bold, inline code, links
@@ -574,6 +659,9 @@ export default function ChatPage() {
                       {renderContent(msg.content)}
                       {msg.execBlocks?.map((block, bi) => (
                         <ExecBlockView key={bi} block={block} />
+                      ))}
+                      {parseFileTags(msg.content).map((fp, fi) => (
+                        <FileCard key={fi} filepath={fp} />
                       ))}
                     </>
                   )}

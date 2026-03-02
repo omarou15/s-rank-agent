@@ -97,6 +97,44 @@ app.get("/files/search", async (c) => {
   }
 });
 
+// ── File Download (read file content for chat download) ──
+app.get("/files/download", async (c) => {
+  const path = c.req.query("path") || "";
+  if (!path) return c.json({ error: "Path required" }, 400);
+
+  const ext = path.split(".").pop()?.toLowerCase() || "";
+  const binaryExts = ["png", "jpg", "jpeg", "gif", "webp", "ico", "pdf", "zip", "tar", "gz", "rar", "7z", "mp3", "mp4", "wav", "ogg", "doc", "docx", "xls", "xlsx", "pptx", "sqlite", "db", "woff", "woff2", "ttf", "eot"];
+  const mimeMap: Record<string, string> = {
+    pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
+    svg: "image/svg+xml", webp: "image/webp", zip: "application/zip", gz: "application/gzip",
+    csv: "text/csv", json: "application/json", html: "text/html", xml: "text/xml",
+    mp3: "audio/mpeg", mp4: "video/mp4", wav: "audio/wav",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  };
+
+  try {
+    if (binaryExts.includes(ext)) {
+      // Binary: use exec to base64 encode the file
+      const result = await vps("/exec", {
+        method: "POST",
+        body: JSON.stringify({ code: `base64 -w 0 "${path}"`, language: "bash" }),
+      });
+      if (result.exitCode === 0 && result.stdout) {
+        return c.json({ base64: result.stdout.trim(), mime: mimeMap[ext] || "application/octet-stream" });
+      }
+      return c.json({ error: "Cannot read binary file" }, 500);
+    } else {
+      // Text: use files/read
+      const result = await vps(`/files/read?path=${encodeURIComponent(path)}`);
+      return c.json({ content: result.content || "", mime: mimeMap[ext] || "text/plain" });
+    }
+  } catch (e: any) {
+    return c.json({ error: e.message || "Download failed" }, 500);
+  }
+});
+
 // ── Code Execution (proxy to VPS) ──
 app.post("/exec", async (c) => {
   const body = await c.req.json();
