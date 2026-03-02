@@ -396,15 +396,31 @@ export default function ChatPage() {
     pushTask({ id: taskId, name: taskName, status: "running", startedAt: Date.now() });
     try {
       const res = await fetch("/api/exec", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: block.code, language: block.lang }) });
-      const result: ExecResult = await res.json();
+      const data = await res.json();
+
+      // Handle VPS errors (returns {error: "..."} instead of {stdout, stderr, exitCode})
+      if (data.error || !res.ok) {
+        const errMsg = data.error || `HTTP ${res.status}`;
+        pushTask({ id: taskId, name: taskName, status: "error", startedAt: Date.now(), finishedAt: Date.now(), duration: 0, error: errMsg });
+        updateStats(false);
+        return { ...block, result: { stdout: "", stderr: `Erreur serveur: ${errMsg}`, exitCode: 1, duration: 0 }, status: "error" };
+      }
+
+      const result: ExecResult = {
+        stdout: data.stdout || data.output || "",
+        stderr: data.stderr || "",
+        exitCode: typeof data.exitCode === "number" ? data.exitCode : (typeof data.exit_code === "number" ? data.exit_code : (data.error ? 1 : 0)),
+        duration: data.duration || 0,
+      };
       const ok = result.exitCode === 0;
       pushTask({ id: taskId, name: taskName, status: ok ? "done" : "error", startedAt: Date.now() - (result.duration || 0), finishedAt: Date.now(), duration: result.duration, output: result.stdout?.slice(0,500), error: result.stderr?.slice(0,500) });
       updateStats(ok);
       return { ...block, result, status: ok ? "done" : "error" };
     } catch (err: any) {
-      pushTask({ id: taskId, name: taskName, status: "error", startedAt: Date.now(), finishedAt: Date.now(), duration: 0, error: err.message });
+      const errMsg = err.message || "Connexion au serveur impossible";
+      pushTask({ id: taskId, name: taskName, status: "error", startedAt: Date.now(), finishedAt: Date.now(), duration: 0, error: errMsg });
       updateStats(false);
-      return { ...block, result: { stdout: "", stderr: err.message, exitCode: 1, duration: 0 }, status: "error" };
+      return { ...block, result: { stdout: "", stderr: errMsg, exitCode: 1, duration: 0 }, status: "error" };
     }
   };
 
