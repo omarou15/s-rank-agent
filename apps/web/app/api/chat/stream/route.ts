@@ -71,6 +71,10 @@ CAPACITÉS:
 - WALLET: Solde prépayé. Vérifie /wallet avant de dépenser. Utilise /wallet/spend {amount, description, service}
 - WEB: Scraper avec Python (requests + beautifulsoup4) pour des infos live
 - FICHIERS JOINTS: Les fichiers uploadés sont dans /home/agent/uploads/
+- CRONS: Tu peux planifier des tâches récurrentes. Pour créer un cron, utilise [CRON:nom|schedule|commande]. Exemples:
+  [CRON:Scraping prix|*/30 * * * *|python3 /home/agent/scripts/scrape_prices.py]
+  [CRON:Backup DB|0 0 * * *|pg_dump mydb > /home/agent/backups/db_$(date +%Y%m%d).sql]
+  Les schedules cron standards: */5 (5min), */15 (15min), 0 * (1h), 0 */6 (6h), 0 9 * * 1-5 (lun-ven 9h), 0 0 * * * (minuit)
 ${skillsPrompt}
 ${connectorsPrompt}
 

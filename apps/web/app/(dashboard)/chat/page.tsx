@@ -87,8 +87,8 @@ function ExecBlockView({ block }: { block: ExecBlock }) {
 
 // ── Render message content (strip exec blocks, render markdown-lite) ──
 function renderContent(content: string) {
-  // Remove [EXEC]...[/EXEC] blocks and [MEMORY:...] tags from display
-  let clean = content.replace(/\[EXEC:\w+\][\s\S]*?\[\/EXEC\]/g, "").replace(/\[MEMORY:[^\]]*\]/g, "").trim();
+  // Remove [EXEC]...[/EXEC] blocks, [MEMORY:...] tags, and [CRON:...] tags from display
+  let clean = content.replace(/\[EXEC:\w+\][\s\S]*?\[\/EXEC\]/g, "").replace(/\[MEMORY:[^\]]*\]/g, "").replace(/\[CRON:[^\]]*\]/g, "").trim();
   if (!clean) return null;
 
   // Simple markdown: bold, inline code, links
@@ -243,8 +243,43 @@ export default function ChatPage() {
     return blocks;
   };
 
+  // ── Push task to Command Center ──
+  const pushTask = (task: { id: string; name: string; status: string; startedAt: number; duration?: number; output?: string; error?: string; finishedAt?: number }) => {
+    // Update localStorage for Command Center
+    try {
+      const saved = JSON.parse(localStorage.getItem("s-rank-tasks") || "[]");
+      const idx = saved.findIndex((t: any) => t.id === task.id);
+      if (idx >= 0) saved[idx] = task;
+      else saved.push(task);
+      localStorage.setItem("s-rank-tasks", JSON.stringify(saved.slice(-100)));
+    } catch {}
+    // Broadcast cross-tab
+    localStorage.setItem("s-rank-task-event", JSON.stringify({ ...task, _ts: Date.now() }));
+  };
+
+  // ── Update daily stats ──
+  const updateStats = (success: boolean) => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const saved = JSON.parse(localStorage.getItem("s-rank-stats") || "[]");
+      const idx = saved.findIndex((s: any) => s.date === today);
+      if (idx >= 0) {
+        saved[idx].tasks += 1;
+        if (success) saved[idx].success += 1;
+        else saved[idx].errors += 1;
+        saved[idx].tokens += 500;
+      } else {
+        saved.push({ date: today, tasks: 1, success: success ? 1 : 0, errors: success ? 0 : 1, tokens: 500 });
+      }
+      localStorage.setItem("s-rank-stats", JSON.stringify(saved.slice(-30)));
+    } catch {}
+  };
+
   // ── Execute a single block ──
-  const executeBlock = async (block: ExecBlock): Promise<ExecBlock> => {
+  const executeBlock = async (block: ExecBlock, taskName: string): Promise<ExecBlock> => {
+    const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    pushTask({ id: taskId, name: taskName, status: "running", startedAt: Date.now() });
+
     try {
       const res = await fetch("/api/exec", {
         method: "POST",
@@ -252,8 +287,13 @@ export default function ChatPage() {
         body: JSON.stringify({ code: block.code, language: block.lang }),
       });
       const result: ExecResult = await res.json();
-      return { ...block, result, status: result.exitCode === 0 ? "done" : "error" };
+      const ok = result.exitCode === 0;
+      pushTask({ id: taskId, name: taskName, status: ok ? "done" : "error", startedAt: Date.now() - (result.duration || 0), finishedAt: Date.now(), duration: result.duration, output: result.stdout?.slice(0, 500), error: result.stderr?.slice(0, 500) });
+      updateStats(ok);
+      return { ...block, result, status: ok ? "done" : "error" };
     } catch (err: any) {
+      pushTask({ id: taskId, name: taskName, status: "error", startedAt: Date.now(), finishedAt: Date.now(), duration: 0, error: err.message });
+      updateStats(false);
       return { ...block, result: { stdout: "", stderr: err.message, exitCode: 1, duration: 0 }, status: "error" };
     }
   };
@@ -269,7 +309,11 @@ export default function ChatPage() {
         return { ...m, execBlocks: updated };
       }));
 
-      const result = await executeBlock(blocks[i]);
+      // Generate task name from first line of code
+      const firstLine = blocks[i].code.split("\n")[0].slice(0, 60);
+      const taskName = `${blocks[i].lang}: ${firstLine}`;
+
+      const result = await executeBlock(blocks[i], taskName);
 
       // Set result
       setMessages(prev => prev.map(m => {
@@ -363,6 +407,18 @@ export default function ChatPage() {
         try {
           const mem = JSON.parse(localStorage.getItem("s-rank-memory") || '{"facts":[],"style":"","preferences":{}}');
           if (!mem.facts.includes(memMatch[1])) { mem.facts.push(memMatch[1]); localStorage.setItem("s-rank-memory", JSON.stringify(mem)); }
+        } catch {}
+      }
+
+      // Extract and create crons
+      const cronRegex = /\[CRON:([^|]+)\|([^|]+)\|([^\]]+)\]/g;
+      let cronMatch;
+      while ((cronMatch = cronRegex.exec(fullContent)) !== null) {
+        const [, name, schedule, command] = cronMatch;
+        const newCron = { id: `cron-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`, name: name.trim(), schedule: schedule.trim(), description: name.trim(), command: command.trim(), enabled: true };
+        try {
+          await fetch("/api/crons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newCron) });
+          addSystemMessage(`Cron créé : "${name.trim()}" — ${schedule.trim()}`);
         } catch {}
       }
 

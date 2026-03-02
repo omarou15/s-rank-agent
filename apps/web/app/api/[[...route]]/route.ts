@@ -107,6 +107,34 @@ app.post("/exec", async (c) => {
   }
 });
 
+// ── Crons ──
+app.get("/crons", async (c) => {
+  try { return c.json(await vps("/crons")); }
+  catch { return c.json([]); }
+});
+app.post("/crons", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/crons", { method: "POST", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.put("/crons/:id", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps(`/crons/${c.req.param("id")}`, { method: "PUT", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.delete("/crons/:id", async (c) => {
+  try { return c.json(await vps(`/crons/${c.req.param("id")}`, { method: "DELETE" })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.post("/crons/:id/run", async (c) => {
+  try { return c.json(await vps(`/crons/${c.req.param("id")}/run`, { method: "POST" })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.get("/crons/log", async (c) => {
+  try { return c.json(await vps("/crons/log")); }
+  catch { return c.json([]); }
+});
+
 // ── Wallet ──
 app.get("/wallet", async (c) => {
   try { return c.json(await vps("/wallet")); }

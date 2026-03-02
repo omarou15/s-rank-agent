@@ -24,6 +24,7 @@ interface CronJob {
   name: string;
   schedule: string;
   description: string;
+  command: string;
   enabled: boolean;
   lastRun?: number;
   nextRun?: number;
@@ -133,7 +134,9 @@ function TaskRow({ task, onPause, onResume, onDelete }: { task: Task; onPause: (
 }
 
 // ── Cron Row ──
-function CronRow({ job, onToggle }: { job: CronJob; onToggle: () => void }) {
+function CronRow({ job, onToggle, onRunNow, onDelete }: { job: CronJob; onToggle: () => void; onRunNow: () => void; onDelete: () => void }) {
+  const [running, setRunning] = useState(false);
+  const handleRun = async () => { setRunning(true); await onRunNow(); setRunning(false); };
   return (
     <div className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${job.enabled ? "bg-zinc-900 border-zinc-800" : "bg-zinc-950 border-zinc-900 opacity-50"}`}>
       <Timer size={16} className={job.enabled ? "text-cyan-400" : "text-zinc-600"} />
@@ -148,10 +151,21 @@ function CronRow({ job, onToggle }: { job: CronJob; onToggle: () => void }) {
             </span>
           )}
         </div>
+        {job.command && <p className="text-[9px] text-zinc-600 mt-0.5 font-mono truncate">{job.command}</p>}
       </div>
-      <button onClick={onToggle} className={`w-9 h-5 rounded-full transition-colors ${job.enabled ? "bg-emerald-500" : "bg-zinc-700"}`}>
-        <div className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${job.enabled ? "translate-x-4.5 ml-[18px]" : "ml-[3px]"}`} />
-      </button>
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={handleRun} disabled={running} title="Exécuter maintenant"
+          className="p-1.5 text-zinc-500 hover:text-cyan-400 rounded-lg hover:bg-zinc-800 disabled:opacity-30">
+          {running ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
+        </button>
+        <button onClick={onDelete} title="Supprimer"
+          className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg hover:bg-zinc-800">
+          <Trash2 size={13} />
+        </button>
+        <button onClick={onToggle} className={`w-9 h-5 rounded-full transition-colors ${job.enabled ? "bg-emerald-500" : "bg-zinc-700"}`}>
+          <div className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${job.enabled ? "translate-x-4.5 ml-[18px]" : "ml-[3px]"}`} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -163,6 +177,8 @@ export default function CommandCenterPage() {
   const [stats, setStats] = useState<DayStat[]>([]);
   const [metrics, setMetrics] = useState({ cpu: 0, ram: 0, storage: 0, uptime: 0 });
   const [tab, setTab] = useState<"tasks" | "crons" | "evolution">("tasks");
+  const [showCronForm, setShowCronForm] = useState(false);
+  const [cronForm, setCronForm] = useState({ name: "", command: "", schedule: "0 * * * *" });
 
   // Load data
   useEffect(() => {
@@ -172,12 +188,16 @@ export default function CommandCenterPage() {
       if (saved) setTasks(JSON.parse(saved));
     } catch {}
 
-    // Load crons
-    try {
-      const saved = localStorage.getItem("s-rank-crons");
-      if (saved) setCrons(JSON.parse(saved));
-      else setCrons(getDefaultCrons());
-    } catch { setCrons(getDefaultCrons()); }
+    // Load crons from VPS
+    fetch("/api/crons").then(r => r.json()).then(data => {
+      if (Array.isArray(data) && data.length > 0) setCrons(data);
+      else {
+        // Seed default crons on VPS
+        const defaults = getDefaultCrons();
+        defaults.forEach(c => fetch("/api/crons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c) }));
+        setCrons(defaults);
+      }
+    }).catch(() => setCrons(getDefaultCrons()));
 
     // Load stats
     try {
@@ -195,8 +215,9 @@ export default function CommandCenterPage() {
         try {
           const task = JSON.parse(e.newValue);
           setTasks(prev => {
-            const updated = [...prev, task];
-            localStorage.setItem("s-rank-tasks", JSON.stringify(updated));
+            const existing = prev.findIndex(t => t.id === task.id);
+            const updated = existing >= 0 ? prev.map(t => t.id === task.id ? task : t) : [...prev, task];
+            localStorage.setItem("s-rank-tasks", JSON.stringify(updated.slice(-100)));
             return updated;
           });
         } catch {}
@@ -204,18 +225,13 @@ export default function CommandCenterPage() {
     };
     window.addEventListener("storage", handleStorage);
 
-    // Poll running tasks
+    // Poll running tasks + reload from localStorage
     const interval = setInterval(() => {
-      setTasks(prev => {
-        const updated = prev.map(t => {
-          if (t.status === "running" && Date.now() - t.startedAt > 300000) {
-            return { ...t, status: "error" as const, error: "Timeout (5 min)", finishedAt: Date.now(), duration: Date.now() - t.startedAt };
-          }
-          return t;
-        });
-        return updated;
-      });
-    }, 5000);
+      try {
+        const saved = JSON.parse(localStorage.getItem("s-rank-tasks") || "[]");
+        setTasks(saved);
+      } catch {}
+    }, 3000);
 
     return () => { window.removeEventListener("storage", handleStorage); clearInterval(interval); };
   }, []);
@@ -230,10 +246,41 @@ export default function CommandCenterPage() {
   const deleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
   const toggleCron = (id: string) => {
     setCrons(prev => {
+      const cron = prev.find(c => c.id === id);
+      if (!cron) return prev;
       const updated = prev.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c);
-      localStorage.setItem("s-rank-crons", JSON.stringify(updated));
+      // Update on VPS
+      fetch(`/api/crons/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !cron.enabled }) }).catch(() => {});
       return updated;
     });
+  };
+
+  const runCronNow = async (id: string) => {
+    try {
+      const res = await fetch(`/api/crons/${id}/run`, { method: "POST" });
+      const result = await res.json();
+      setCrons(prev => prev.map(c => c.id === id ? { ...c, lastRun: Date.now(), lastStatus: result.status } : c));
+    } catch {}
+  };
+
+  const createCron = async () => {
+    const newCron: CronJob = {
+      id: `cron-${Date.now()}`,
+      name: cronForm.name,
+      schedule: cronForm.schedule,
+      description: cronForm.name,
+      command: cronForm.command,
+      enabled: true,
+    };
+    setCrons(prev => [...prev, newCron]);
+    setShowCronForm(false);
+    setCronForm({ name: "", command: "", schedule: "0 * * * *" });
+    try { await fetch("/api/crons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newCron) }); } catch {}
+  };
+
+  const deleteCron = async (id: string) => {
+    setCrons(prev => prev.filter(c => c.id !== id));
+    try { await fetch(`/api/crons/${id}`, { method: "DELETE" }); } catch {}
   };
 
   // Computed
@@ -356,13 +403,48 @@ export default function CommandCenterPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-[10px] text-zinc-500 uppercase">Tâches planifiées ({crons.filter(c => c.enabled).length} actives)</p>
-              <button className="flex items-center gap-1 text-[10px] text-violet-400 hover:text-violet-300">
-                <Plus size={12} /> Ajouter
+              <button onClick={() => setShowCronForm(!showCronForm)} className="flex items-center gap-1 text-[10px] text-violet-400 hover:text-violet-300">
+                <Plus size={12} /> {showCronForm ? "Annuler" : "Ajouter"}
               </button>
             </div>
+
+            {/* Create cron form */}
+            {showCronForm && (
+              <div className="bg-zinc-900 rounded-xl p-4 border border-violet-500/30 space-y-3">
+                <input value={cronForm.name} onChange={e => setCronForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Nom (ex: Scraping prix concurrents)"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500" />
+                <input value={cronForm.command} onChange={e => setCronForm(f => ({ ...f, command: e.target.value }))}
+                  placeholder="Commande (ex: python3 /home/agent/scripts/scrape.py)"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white font-mono placeholder:text-zinc-600 focus:outline-none focus:border-violet-500" />
+                <div>
+                  <p className="text-[10px] text-zinc-500 mb-1.5">Fréquence</p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { label: "5 min", value: "*/5 * * * *" },
+                      { label: "15 min", value: "*/15 * * * *" },
+                      { label: "1h", value: "0 * * * *" },
+                      { label: "6h", value: "0 */6 * * *" },
+                      { label: "Quotidien 9h", value: "0 9 * * *" },
+                      { label: "Lun-Ven 9h", value: "0 9 * * 1-5" },
+                    ].map(opt => (
+                      <button key={opt.value} onClick={() => setCronForm(f => ({ ...f, schedule: opt.value }))}
+                        className={`px-2 py-1.5 rounded-lg text-[10px] border transition-colors ${cronForm.schedule === opt.value ? "bg-violet-600 border-violet-500 text-white" : "bg-zinc-950 border-zinc-700 text-zinc-400 hover:border-zinc-600"}`}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button onClick={createCron} disabled={!cronForm.name || !cronForm.command}
+                  className="w-full py-2 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-500 disabled:opacity-30 disabled:cursor-not-allowed">
+                  Créer le cron
+                </button>
+              </div>
+            )}
+
             <div className="space-y-2">
               {crons.map(job => (
-                <CronRow key={job.id} job={job} onToggle={() => toggleCron(job.id)} />
+                <CronRow key={job.id} job={job} onToggle={() => toggleCron(job.id)} onRunNow={() => runCronNow(job.id)} onDelete={() => deleteCron(job.id)} />
               ))}
             </div>
             {crons.length === 0 && (
@@ -504,9 +586,9 @@ export default function CommandCenterPage() {
 // ── Default crons ──
 function getDefaultCrons(): CronJob[] {
   return [
-    { id: "cron-1", name: "Backup serveur", schedule: "0 0 * * *", description: "Snapshot quotidien du serveur", enabled: true, lastRun: Date.now() - 43200000, lastStatus: "success" },
-    { id: "cron-2", name: "Nettoyage fichiers temporaires", schedule: "0 */6 * * *", description: "Supprime les fichiers tmp > 24h", enabled: true, lastRun: Date.now() - 7200000, lastStatus: "success" },
-    { id: "cron-3", name: "Rapport d'activité", schedule: "0 9 * * 1-5", description: "Résumé des actions de la veille", enabled: false },
+    { id: "cron-1", name: "Backup serveur", schedule: "0 0 * * *", description: "Snapshot quotidien du serveur", command: "tar -czf /home/agent/backups/backup-$(date +%Y%m%d).tar.gz /home/agent/projects/ 2>/dev/null; ls -la /home/agent/backups/ | tail -5", enabled: true, lastRun: Date.now() - 43200000, lastStatus: "success" },
+    { id: "cron-2", name: "Nettoyage fichiers temporaires", schedule: "0 */6 * * *", description: "Supprime les fichiers tmp > 24h", command: "find /tmp -type f -mmin +1440 -delete 2>/dev/null; echo Nettoyage OK; du -sh /tmp/", enabled: true, lastRun: Date.now() - 7200000, lastStatus: "success" },
+    { id: "cron-3", name: "Rapport activite", schedule: "0 9 * * 1-5", description: "Resume actions de la veille", command: "echo Rapport $(date); uptime; df -h /", enabled: false },
   ];
 }
 
