@@ -89,6 +89,23 @@ const SKILLS: Skill[] = [
   { id: "78", name: "Airtable Connector", description: "CRUD Airtable. Bases, tables, vues, filtres. Automatisation workflow.", category: "Data", author: "Community", isOfficial: false, installs: 420, rating: 39 },
   { id: "79", name: "Linear Tracker", description: "Gestion de projet Linear. Issues, cycles, projets. Sync avec GitHub PRs.", category: "Tools", author: "Community", isOfficial: false, installs: 510, rating: 41 },
   { id: "80", name: "Supabase Setup", description: "Backend-as-a-Service complet. Auth, DB PostgreSQL, Storage, Edge Functions, Realtime.", category: "Development", author: "Community", isOfficial: false, installs: 750, rating: 43 },
+
+  // ═══════ 🔥 INSPIRED BY CLAWHUB TOP SKILLS ═══════
+  { id: "81", name: "Capability Evolver", description: "L'agent évolue automatiquement. Il crée, modifie et optimise ses propres skills en fonction de tes besoins.", category: "AI/ML", author: "S-Rank", isOfficial: true, installs: 5800, rating: 50 },
+  { id: "82", name: "AgentMail", description: "Boîte mail dédiée à l'agent. Envoyer, recevoir, lire, répondre aux emails. Support tickets, notifications auto.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 3200, rating: 49 },
+  { id: "83", name: "Local File System", description: "Accès sécurisé au filesystem du serveur. Lire, écrire, éditer configs, analyser logs, gérer permissions.", category: "Tools", author: "S-Rank", isOfficial: true, installs: 4500, rating: 49 },
+  { id: "84", name: "Skill Vetter", description: "Analyse de sécurité des skills communautaires avant installation. Détection malware, injections, fuites de données.", category: "Security", author: "S-Rank", isOfficial: true, installs: 3500, rating: 49 },
+  { id: "85", name: "Memory Manager", description: "Mémoire persistante avancée. SOUL.md, contexte cross-session, préférences apprises, historique de décisions.", category: "AI/ML", author: "S-Rank", isOfficial: true, installs: 4200, rating: 49 },
+  { id: "86", name: "E-Commerce Builder", description: "Créer une boutique complète. Catalogue, panier, checkout Stripe, gestion stock, emails transactionnels.", category: "Development", author: "S-Rank", isOfficial: true, installs: 2400, rating: 48 },
+  { id: "87", name: "Legal Doc Generator", description: "CGV, CGU, politique de confidentialité, contrats, NDA. Conforme RGPD. Adapté à ton activité.", category: "Tools", author: "S-Rank", isOfficial: true, installs: 1900, rating: 47 },
+  { id: "88", name: "Finance Tracker", description: "Suivi revenus/dépenses, factures, TVA, prévisions. Dashboard financier. Export comptable.", category: "Tools", author: "S-Rank", isOfficial: true, installs: 1600, rating: 46 },
+  { id: "89", name: "RAG Pipeline", description: "Retrieval-Augmented Generation. Indexer des docs, PDFs, sites web et poser des questions dessus.", category: "AI/ML", author: "S-Rank", isOfficial: true, installs: 3100, rating: 48 },
+  { id: "90", name: "Multi-Agent Orchestrator", description: "Coordonner plusieurs agents en parallèle. Diviser un projet en sous-tâches, merger les résultats.", category: "AI/ML", author: "S-Rank", isOfficial: true, installs: 2600, rating: 48 },
+  { id: "91", name: "API Rate Limiter", description: "Gérer les rate limits de toutes tes APIs. Queue intelligente, retry, backoff exponentiel, monitoring.", category: "Development", author: "Community", isOfficial: false, installs: 680, rating: 42 },
+  { id: "92", name: "Webhook Manager", description: "Créer, tester, debugger des webhooks. Tunnel ngrok, logs, replay, mock server.", category: "Development", author: "Community", isOfficial: false, installs: 720, rating: 43 },
+  { id: "93", name: "Translation Agent", description: "Traduction de qualité humaine. 50+ langues. Contexte préservé, terminologie cohérente, batch processing.", category: "Content", author: "Community", isOfficial: false, installs: 890, rating: 44 },
+  { id: "94", name: "Crypto Tracker", description: "Prix crypto en temps réel, alertes, portfolio tracker, DeFi analytics. CoinGecko + DexScreener.", category: "Data", author: "Community", isOfficial: false, installs: 560, rating: 41 },
+  { id: "95", name: "Prompt Engineer", description: "Optimiser tes prompts. A/B testing, scoring, templates, bibliothèque de prompts. Pour Claude, GPT, etc.", category: "AI/ML", author: "Community", isOfficial: false, installs: 940, rating: 44 },
 ];
 
 export default function SkillsPage() {
