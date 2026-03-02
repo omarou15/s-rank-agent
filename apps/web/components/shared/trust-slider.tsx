@@ -26,6 +26,13 @@ export function TrustSlider({ onChange }: { onChange?: (level: number) => void }
     setLevel(n);
     localStorage.setItem("s-rank-trust-level", String(n));
     onChange?.(n);
+    // Broadcast to chat
+    const names: Record<number,string> = { 1: "Supervision totale", 2: "Prudent", 3: "Autonome", 4: "Full Auto" };
+    localStorage.setItem("s-rank-pending-event", JSON.stringify({
+      type: "trust_changed",
+      message: `🎚️ Niveau d'autonomie → **${names[n]}** (${n}/4)`,
+      importance: n >= 3 ? "high" : "low",
+    }));
   };
 
   const current = TRUST_LEVELS[level - 1];

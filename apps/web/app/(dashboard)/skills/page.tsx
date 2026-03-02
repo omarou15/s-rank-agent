@@ -126,15 +126,22 @@ export default function SkillsPage() {
     setInstalling(id);
     await new Promise((r) => setTimeout(r, 1200));
     setSkills((prev) => prev.map((s) => s.id === id ? { ...s, installed: true } : s));
-    const installed = skills.filter((s) => s.installed || s.id === id).map((s) => s.id);
-    localStorage.setItem("s-rank-installed-skills", JSON.stringify(installed));
+    const installedSkills = skills.filter((s) => s.installed || s.id === id);
+    localStorage.setItem("s-rank-installed-skills", JSON.stringify(installedSkills.map((s) => s.name)));
+    // Proactive event → chat
+    const skillName = skills.find(s => s.id === id)?.name || "Skill";
+    localStorage.setItem("s-rank-pending-event", JSON.stringify({
+      type: "skill_installed",
+      message: `🧩 **${skillName}** installé. Je maîtrise maintenant ce domaine — dis-moi si tu veux l'utiliser.`,
+      importance: "high",
+    }));
     setInstalling(null);
   };
 
   const uninstallSkill = (id: string) => {
     setSkills((prev) => prev.map((s) => s.id === id ? { ...s, installed: false } : s));
-    const installed = skills.filter((s) => s.installed && s.id !== id).map((s) => s.id);
-    localStorage.setItem("s-rank-installed-skills", JSON.stringify(installed));
+    const installedSkills = skills.filter((s) => s.installed && s.id !== id);
+    localStorage.setItem("s-rank-installed-skills", JSON.stringify(installedSkills.map((s) => s.name)));
   };
 
   const categories = ["all", ...new Set(SKILLS.map((s) => s.category))];

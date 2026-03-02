@@ -263,6 +263,11 @@ export default function SettingsPage() {
     if (!apiKey.startsWith("sk-ant-")) { setMessage("La clé doit commencer par sk-ant-"); return; }
     localStorage.setItem("s-rank-api-key", apiKey); setHasKey(true);
     setMessage("Clé sauvegardée !"); setTimeout(() => setMessage(""), 3000);
+    localStorage.setItem("s-rank-pending-event", JSON.stringify({
+      type: "api_key_saved",
+      message: "🔑 Clé API Claude configurée. Je suis prêt à travailler — que veux-tu qu'on fasse ?",
+      importance: "high",
+    }));
   };
 
   const removeKey = () => {
