@@ -1,16 +1,16 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { ArrowUp, Paperclip, X, FileText, Image, FileCode, Loader2 } from "lucide-react";
+import { ArrowUp, Paperclip, X, FileText, Image, FileCode, Loader2, Square } from "lucide-react";
 
 export interface UploadedFile { name: string; size: number; path: string; type: string; base64?: string; }
-interface ChatInputProps { onSend: (message: string, files?: UploadedFile[]) => void; disabled?: boolean; placeholder?: string; }
+interface ChatInputProps { onSend: (message: string, files?: UploadedFile[]) => void; disabled?: boolean; placeholder?: string; loopActive?: boolean; onStop?: () => void; }
 
 function getCat(n: string) { const e = n.split(".").pop()?.toLowerCase() || ""; if (["png","jpg","jpeg","gif","svg","webp"].includes(e)) return "image"; if (["ts","tsx","js","jsx","py","sh","html","css","json","md","csv","sql"].includes(e)) return "code"; return "default"; }
 function fmtSize(b: number) { if (b < 1024) return b + " B"; if (b < 1048576) return (b/1024).toFixed(1) + " KB"; return (b/1048576).toFixed(1) + " MB"; }
 const ICONS: Record<string, any> = { image: Image, code: FileCode, default: FileText };
 const IMG_EXTS = ["png","jpg","jpeg","gif","webp"];
 
-export function ChatInput({ onSend, disabled, placeholder = "Demande quelque chose..." }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, placeholder = "Demande quelque chose...", loopActive, onStop }: ChatInputProps) {
   const [value, setValue] = useState("");
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -138,15 +138,27 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
             disabled={disabled || uploading} rows={1}
             className="flex-1 resize-none bg-transparent text-[15px] text-white/90 placeholder-white/25 focus:outline-none leading-relaxed max-h-[160px]" />
 
-          <button onClick={doSend} disabled={!hasContent || disabled || uploading}
-            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300"
-            style={{
-              background: hasContent && !disabled ? "linear-gradient(135deg, #0A84FF, #5E5CE6)" : "rgba(255,255,255,0.06)",
-              boxShadow: hasContent && !disabled ? "0 4px 12px rgba(10,132,255,0.3)" : "none",
-              opacity: hasContent && !disabled ? 1 : 0.4,
-            }}>
-            <ArrowUp size={16} strokeWidth={2.5} className="text-white" />
-          </button>
+          {loopActive ? (
+            <button onClick={onStop}
+              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300"
+              style={{
+                background: "rgba(255,69,58,0.2)",
+                border: "1px solid rgba(255,69,58,0.3)",
+                boxShadow: "0 4px 12px rgba(255,69,58,0.15)",
+              }}>
+              <Square size={14} fill="#FF453A" className="text-[#FF453A]" />
+            </button>
+          ) : (
+            <button onClick={doSend} disabled={!hasContent || disabled || uploading}
+              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300"
+              style={{
+                background: hasContent && !disabled ? "linear-gradient(135deg, #0A84FF, #5E5CE6)" : "rgba(255,255,255,0.06)",
+                boxShadow: hasContent && !disabled ? "0 4px 12px rgba(10,132,255,0.3)" : "none",
+                opacity: hasContent && !disabled ? 1 : 0.4,
+              }}>
+              <ArrowUp size={16} strokeWidth={2.5} className="text-white" />
+            </button>
+          )}
         </div>
       </div>
     </div>

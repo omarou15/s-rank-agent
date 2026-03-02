@@ -328,6 +328,9 @@ export default function ChatPage() {
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [loopActive, setLoopActive] = useState(false);
+  const [loopIteration, setLoopIteration] = useState(0);
+  const stopRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
   const STORAGE_KEY = `s-rank-chat-${uid}`;
@@ -405,69 +408,263 @@ export default function ChatPage() {
     }
   };
 
-  const autoExecuteBlocks = async (msgId: string, blocks: ExecBlock[]) => {
-    for (let i = 0; i < blocks.length; i++) {
-      setMessages(prev => prev.map(m => { if (m.id !== msgId) return m; const u = [...(m.execBlocks || [])]; u[i] = { ...u[i], status: "running" }; return { ...m, execBlocks: u }; }));
-      const result = await executeBlock(blocks[i], `${blocks[i].lang}: ${blocks[i].code.split("\n")[0].slice(0,60)}`);
-      setMessages(prev => prev.map(m => { if (m.id !== msgId) return m; const u = [...(m.execBlocks || [])]; u[i] = result; return { ...m, execBlocks: u }; }));
+  const saveApiKey = (key: string) => { setApiKey(key); localStorage.setItem("s-rank-api-key", key); setShowKeyInput(false); addSystemMessage("Clé API configurée ✓"); };
+
+  // ── Format results for Claude context ──
+  const formatResultsForClaude = (blocks: ExecBlock[]): string => {
+    let out = "RÉSULTATS D'EXÉCUTION:\n\n";
+    for (const b of blocks) {
+      out += `── [${b.lang.toUpperCase()}] exit code: ${b.result?.exitCode ?? "?"} ──\n`;
+      if (b.result?.stdout) out += `STDOUT:\n${b.result.stdout.slice(0, 8000)}\n`;
+      if (b.result?.stderr) out += `STDERR:\n${b.result.stderr.slice(0, 3000)}\n`;
+      out += "\n";
+    }
+    out += "Continue en te basant sur ces résultats. Si une erreur s'est produite, corrige et réessaie. Si tout est OK, passe à l'étape suivante ou donne ta réponse finale (sans bloc [EXEC]).";
+    return out;
+  };
+
+  // ── Stream a single Claude call and return full content ──
+  const streamClaudeCall = async (
+    content: string,
+    history: { role: string; content: any }[],
+    msgId: string,
+    images?: { base64: string; mediaType: string }[],
+  ): Promise<string> => {
+    const res = await fetch("/api/chat/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content,
+        apiKey,
+        history,
+        trustLevel: getTrustLevel(),
+        memoryContext: getMemoryContext(),
+        installedSkills: getInstalledSkills(),
+        activeConnectors: getActiveConnectors(),
+        userDir: USER_DIR,
+        images,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Échec API Claude");
+    }
+
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    let fullContent = "", buffer = "";
+
+    while (reader) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6);
+        if (data === "[DONE]") continue;
+        try {
+          const p = JSON.parse(data);
+          if (p.type === "content_block_delta" && p.delta?.text) {
+            fullContent += p.delta.text;
+            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullContent } : m));
+          }
+        } catch {}
+      }
+    }
+
+    return fullContent;
+  };
+
+  // ── Process special tags (memory, crons) ──
+  const processSpecialTags = async (content: string) => {
+    // Memory
+    const memRegex = /\[MEMORY:([^\]]+)\]/g;
+    let memMatch;
+    while ((memMatch = memRegex.exec(content)) !== null) {
+      try {
+        const mem = JSON.parse(localStorage.getItem("s-rank-memory") || '{"facts":[],"style":"","preferences":{}}');
+        if (!mem.facts.includes(memMatch[1])) {
+          mem.facts.push(memMatch[1]);
+          localStorage.setItem("s-rank-memory", JSON.stringify(mem));
+        }
+      } catch {}
+    }
+    // Crons
+    const cronRegex = /\[CRON:([^|]+)\|([^|]+)\|([^\]]+)\]/g;
+    let cronMatch;
+    while ((cronMatch = cronRegex.exec(content)) !== null) {
+      const [, name, schedule, command] = cronMatch;
+      try {
+        await fetch("/api/crons", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: `cron-${Date.now()}`, name: name.trim(), schedule: schedule.trim(), description: name.trim(), command: command.trim(), enabled: true }),
+        });
+        addSystemMessage(`Cron créé : "${name.trim()}"`);
+      } catch {}
     }
   };
 
-  const saveApiKey = (key: string) => { setApiKey(key); localStorage.setItem("s-rank-api-key", key); setShowKeyInput(false); addSystemMessage("Clé API configurée ✓"); };
+  // ── AGENTIC LOOP — The core brain ──
+  const MAX_ITERATIONS = 15;
+  const LOOP_TIMEOUT = 300_000; // 5 minutes
 
   const sendMessage = useCallback(async (content: string, files?: UploadedFile[]) => {
     if (!content.trim() || streaming) return;
     if (!apiKey) { setShowKeyInput(true); return; }
 
-    const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content, status: "complete", timestamp: Date.now() };
-    const assistantMsg: Message = { id: `a-${Date.now()}`, role: "assistant", content: "", status: "streaming", timestamp: Date.now() };
-    setMessages(prev => [...prev, userMsg, assistantMsg]);
-    setStreaming(true);
+    const loopStart = Date.now();
+    stopRef.current = false;
 
-    const history = messages.filter(m => m.role !== "system").slice(-20).map(m => ({ role: m.role, content: m.content }));
+    // Create user message
+    const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content, status: "complete", timestamp: Date.now() };
+    const firstAssistantId = `a-${Date.now()}`;
+    const firstAssistantMsg: Message = { id: firstAssistantId, role: "assistant", content: "", status: "streaming", timestamp: Date.now() };
+    setMessages(prev => [...prev, userMsg, firstAssistantMsg]);
+    setStreaming(true);
+    setLoopActive(true);
+    setLoopIteration(0);
+
+    // Collect images from uploaded files
+    const imageData = files?.filter(f => f.base64).map(f => ({
+      base64: f.base64!,
+      mediaType: f.type || "image/jpeg",
+    })) || [];
+
+    // Build initial history from existing messages
+    let claudeHistory = messages.filter(m => m.role !== "system").slice(-20).map(m => ({ role: m.role, content: m.content }));
+    let currentContent = content;
+    let currentMsgId = firstAssistantId;
+    let iteration = 0;
 
     try {
-      // Collect images from uploaded files
-      const imageData = files?.filter(f => f.base64).map(f => ({
-        base64: f.base64,
-        mediaType: f.type || "image/jpeg",
-      })) || [];
-
-      const res = await fetch("/api/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, apiKey, history, trustLevel: getTrustLevel(), memoryContext: getMemoryContext(), installedSkills: getInstalledSkills(), activeConnectors: getActiveConnectors(), userDir: USER_DIR, images: imageData.length > 0 ? imageData : undefined }) });
-      if (!res.ok) { const err = await res.json(); setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: `Erreur: ${err.error || "Échec"}`, status: "error" } : m)); setStreaming(false); return; }
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = "", buffer = "";
-
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n"); buffer = lines.pop() || "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6);
-          if (data === "[DONE]") continue;
-          try { const p = JSON.parse(data); if (p.type === "content_block_delta" && p.delta?.text) { fullContent += p.delta.text; setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: fullContent } : m)); } } catch {}
+      while (iteration < MAX_ITERATIONS) {
+        // ── Safety checks ──
+        if (stopRef.current) {
+          setMessages(prev => [...prev, {
+            id: `sys-stop-${Date.now()}`, role: "system",
+            content: "Boucle arrêtée par l'utilisateur", status: "complete", timestamp: Date.now(),
+          }]);
+          break;
         }
+        if (Date.now() - loopStart > LOOP_TIMEOUT) {
+          setMessages(prev => [...prev, {
+            id: `sys-timeout-${Date.now()}`, role: "system",
+            content: "Timeout — boucle arrêtée après 5 minutes", status: "complete", timestamp: Date.now(),
+          }]);
+          break;
+        }
+
+        setLoopIteration(iteration + 1);
+
+        // ── PHASE 1: Call Claude (streaming) ──
+        const fullContent = await streamClaudeCall(
+          currentContent,
+          claudeHistory,
+          currentMsgId,
+          iteration === 0 ? (imageData.length > 0 ? imageData : undefined) : undefined,
+        );
+
+        // Process special tags
+        await processSpecialTags(fullContent);
+
+        // Parse exec blocks
+        const execBlocks = parseExecBlocks(fullContent);
+
+        // ── PHASE 2: No exec blocks → response finale, exit loop ──
+        if (execBlocks.length === 0) {
+          setMessages(prev => prev.map(m =>
+            m.id === currentMsgId ? { ...m, content: fullContent, status: "complete" } : m
+          ));
+          break;
+        }
+
+        // ── PHASE 3: Execute blocks ──
+        // Mark message as complete with exec blocks
+        setMessages(prev => prev.map(m =>
+          m.id === currentMsgId ? { ...m, content: fullContent, status: "complete", execBlocks: execBlocks.map(b => ({ ...b, status: "pending" as const })) } : m
+        ));
+
+        // Execute each block sequentially
+        const executedBlocks: ExecBlock[] = [];
+        for (let i = 0; i < execBlocks.length; i++) {
+          if (stopRef.current) break;
+
+          // Set block to running
+          setMessages(prev => prev.map(m => {
+            if (m.id !== currentMsgId) return m;
+            const u = [...(m.execBlocks || [])];
+            u[i] = { ...u[i], status: "running" };
+            return { ...m, execBlocks: u };
+          }));
+
+          const result = await executeBlock(execBlocks[i], `${execBlocks[i].lang}: ${execBlocks[i].code.split("\n")[0].slice(0, 60)}`);
+          executedBlocks.push(result);
+
+          // Update block result in UI
+          setMessages(prev => prev.map(m => {
+            if (m.id !== currentMsgId) return m;
+            const u = [...(m.execBlocks || [])];
+            u[i] = result;
+            return { ...m, execBlocks: u };
+          }));
+        }
+
+        if (stopRef.current) break;
+
+        // ── PHASE 4: Prepare next iteration ──
+        // Add assistant response and execution results to Claude history
+        claudeHistory = [
+          ...claudeHistory,
+          { role: "assistant", content: fullContent },
+          { role: "user", content: formatResultsForClaude(executedBlocks) },
+        ];
+
+        // Trim history if too long (keep first 2 + last 10)
+        if (claudeHistory.length > 30) {
+          const first = claudeHistory.slice(0, 2);
+          const recent = claudeHistory.slice(-10);
+          claudeHistory = [
+            ...first,
+            { role: "user", content: `[Résumé: ${(claudeHistory.length - 12) / 2} itérations précédentes exécutées. Détails tronqués.]` },
+            ...recent,
+          ];
+        }
+
+        currentContent = formatResultsForClaude(executedBlocks);
+        iteration++;
+
+        // ── Create iteration indicator + new assistant message ──
+        const nextMsgId = `a-loop-${Date.now()}-${iteration}`;
+        setMessages(prev => [
+          ...prev,
+          { id: `iter-${iteration}`, role: "system", content: `Itération ${iteration + 1}`, status: "complete", timestamp: Date.now() },
+          { id: nextMsgId, role: "assistant", content: "", status: "streaming", timestamp: Date.now() },
+        ]);
+        currentMsgId = nextMsgId;
       }
 
-      const execBlocks = parseExecBlocks(fullContent);
+      // ── Loop finished ──
+      if (iteration >= MAX_ITERATIONS) {
+        setMessages(prev => [...prev, {
+          id: `sys-maxiter-${Date.now()}`, role: "system",
+          content: `Limite de ${MAX_ITERATIONS} itérations atteinte`, status: "complete", timestamp: Date.now(),
+        }]);
+      }
 
-      // Memory
-      const memRegex = /\[MEMORY:([^\]]+)\]/g; let memMatch;
-      while ((memMatch = memRegex.exec(fullContent)) !== null) { try { const mem = JSON.parse(localStorage.getItem("s-rank-memory") || '{"facts":[],"style":"","preferences":{}}'); if (!mem.facts.includes(memMatch[1])) { mem.facts.push(memMatch[1]); localStorage.setItem("s-rank-memory", JSON.stringify(mem)); } } catch {} }
-
-      // Crons
-      const cronRegex = /\[CRON:([^|]+)\|([^|]+)\|([^\]]+)\]/g; let cronMatch;
-      while ((cronMatch = cronRegex.exec(fullContent)) !== null) { const [,name,schedule,command] = cronMatch; try { await fetch("/api/crons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: `cron-${Date.now()}`, name: name.trim(), schedule: schedule.trim(), description: name.trim(), command: command.trim(), enabled: true }) }); addSystemMessage(`Cron créé : "${name.trim()}"`); } catch {} }
-
-      setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: fullContent, status: "complete", execBlocks: execBlocks.length > 0 ? execBlocks : undefined } : m));
-      if (execBlocks.length > 0) await autoExecuteBlocks(assistantMsg.id, execBlocks);
     } catch (err: any) {
-      setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: `Erreur: ${err.message}`, status: "error" } : m));
-    } finally { setStreaming(false); }
+      setMessages(prev => prev.map(m =>
+        m.id === currentMsgId ? { ...m, content: `Erreur: ${err.message}`, status: "error" } : m
+      ));
+    } finally {
+      setStreaming(false);
+      setLoopActive(false);
+      setLoopIteration(0);
+      stopRef.current = false;
+    }
   }, [apiKey, streaming, messages]);
 
   const clearChat = () => { setMessages([{ id: `w-${Date.now()}`, role: "assistant", content: "Nouveau sujet — que veux-tu faire ?", status: "complete", timestamp: Date.now() }]); };
@@ -485,8 +682,10 @@ export default function ChatPage() {
           borderBottom: "1px solid rgba(255,255,255,0.05)",
         }}>
         <div className="flex items-center gap-2.5">
-          <div className="w-2 h-2 rounded-full" style={{ background: "#30D158", boxShadow: "0 0 8px rgba(48,209,88,0.4)" }} />
-          <span className="text-[13px] font-medium text-white/60">S-Rank Agent</span>
+          <div className="w-2 h-2 rounded-full" style={{ background: loopActive ? "#0A84FF" : "#30D158", boxShadow: loopActive ? "0 0 8px rgba(10,132,255,0.5)" : "0 0 8px rgba(48,209,88,0.4)", animation: loopActive ? "pulse 1.5s infinite" : "none" }} />
+          <span className="text-[13px] font-medium text-white/60">
+            {loopActive ? `Itération ${loopIteration}/15` : "S-Rank Agent"}
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <button onClick={() => setShowSearch(!showSearch)} className="p-2 text-white/25 hover:text-white/60 rounded-xl transition-colors hover:bg-white/[0.04]">
@@ -550,9 +749,12 @@ export default function ChatPage() {
             <div key={msg.id}>
               {msg.role === "system" ? (
                 <div className="flex justify-center my-3">
-                  <span className="text-[11px] text-white/25 px-3.5 py-1.5 rounded-full"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.04)" }}>
-                    {msg.content}
+                  <span className={`text-[11px] px-3.5 py-1.5 rounded-full ${msg.id.startsWith("iter-") ? "text-[#0A84FF]/60" : "text-white/25"}`}
+                    style={{
+                      background: msg.id.startsWith("iter-") ? "rgba(10,132,255,0.06)" : "rgba(255,255,255,0.03)",
+                      border: msg.id.startsWith("iter-") ? "1px solid rgba(10,132,255,0.1)" : "1px solid rgba(255,255,255,0.04)",
+                    }}>
+                    {msg.id.startsWith("iter-") ? `🔄 ${msg.content}` : msg.content}
                   </span>
                 </div>
               ) : (
@@ -612,7 +814,7 @@ export default function ChatPage() {
 
       {/* Input */}
       <div className="shrink-0 max-w-2xl mx-auto w-full">
-        <ChatInput onSend={sendMessage} disabled={streaming || !apiKey} />
+        <ChatInput onSend={sendMessage} disabled={streaming || !apiKey} loopActive={loopActive} onStop={() => { stopRef.current = true; }} />
       </div>
     </div>
   );

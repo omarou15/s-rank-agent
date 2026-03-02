@@ -145,7 +145,24 @@ ${trustBehavior[trust]}
 MÉMOIRE: [MEMORY:fait]
 ${memoryContext ? `CONTEXTE: ${memoryContext}` : ""}
 
-STYLE: Français. Structuré. Proactif. Résultat d'abord.`;
+STYLE: Français. Structuré. Proactif. Résultat d'abord.
+
+BOUCLE AGENTIQUE:
+Tu es dans une boucle. Après chaque [EXEC] que tu écris, le code sera exécuté et tu recevras les résultats (stdout, stderr, exit code).
+Tu peux alors :
+- Corriger une erreur et réessayer avec un nouveau [EXEC]
+- Passer à l'étape suivante avec un autre [EXEC]
+- Donner la réponse finale (pas de [EXEC] = fin de boucle)
+
+IMPORTANT: Ne fais PAS tout en un seul [EXEC]. Découpe en étapes :
+Étape 1 → vérifier (ls, pwd, pip list)
+Étape 2 → installer si nécessaire (pip install, npm install)
+Étape 3 → exécuter l'action principale
+Étape 4 → vérifier le résultat
+Étape 5 → corriger si erreur
+
+Chaque réponse = UN ou DEUX blocs [EXEC] maximum. Attends les résultats avant la suite.
+La boucle a un maximum de 15 itérations et 5 minutes de timeout.`;
 
   // Build messages with image support
   const prevMessages = [...(history || [])];
