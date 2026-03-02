@@ -16,34 +16,79 @@ interface Skill {
 }
 
 const SKILLS: Skill[] = [
-  { id: "1", name: "Web Scraper", description: "Extraire des données de n'importe quel site web. Tables, texte, images, liens.", category: "Data", author: "S-Rank", isOfficial: true, installs: 2340, rating: 48 },
-  { id: "2", name: "Data Analyst", description: "Analyser CSV, Excel, SQL. Graphiques, stats, rapports automatiques.", category: "Data", author: "S-Rank", isOfficial: true, installs: 1890, rating: 47 },
-  { id: "3", name: "DevOps Auto", description: "CI/CD, Docker, Kubernetes. Déploiement automatisé.", category: "DevOps", author: "S-Rank", isOfficial: true, installs: 1560, rating: 46 },
-  { id: "4", name: "Content Writer", description: "Articles, emails, posts sociaux, landing pages. SEO optimisé.", category: "Content", author: "S-Rank", isOfficial: true, installs: 3200, rating: 49 },
-  { id: "5", name: "API Builder", description: "APIs REST et GraphQL. Documentation auto, tests, déploiement.", category: "Development", author: "S-Rank", isOfficial: true, installs: 1420, rating: 46 },
-  { id: "6", name: "SEO Optimizer", description: "Audit SEO, mots-clés, meta tags, sitemap, performance.", category: "Marketing", author: "S-Rank", isOfficial: true, installs: 980, rating: 44 },
-  { id: "7", name: "PDF Generator", description: "Rapports PDF, factures, certificats à partir de données.", category: "Tools", author: "S-Rank", isOfficial: true, installs: 1100, rating: 45 },
-  // ── Fullstack SaaS Builder (flagship skill) ──
-  { id: "11", name: "Fullstack SaaS Builder", description: "Crée une app SaaS complète en une conversation. Next.js, auth, base de données, paiements Stripe, déploiement Vercel. De l'idée au MVP en live.", category: "Development", author: "S-Rank", isOfficial: true, installs: 4820, rating: 50 },
-  // ── API Integration Skills ──
-  { id: "12", name: "Stripe Integration", description: "Paiements, abonnements, checkout, webhooks, customer portal. Setup Stripe complet en 5 minutes.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 2100, rating: 48 },
-  { id: "13", name: "Clerk Auth Setup", description: "Authentification OAuth (Google, GitHub), JWT, webhooks, middleware. Prêt en 2 minutes.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 1950, rating: 47 },
+  // ═══════ 🏆 FLAGSHIP SKILLS ═══════
+  { id: "11", name: "Fullstack SaaS Builder", description: "Crée une app SaaS complète en une conversation. Next.js, auth, DB, Stripe, déploiement Vercel. De l'idée au MVP en live.", category: "Development", author: "S-Rank", isOfficial: true, installs: 4820, rating: 50 },
+  { id: "50", name: "Self-Improving Agent", description: "L'agent analyse ses erreurs, optimise ses prompts et améliore ses performances automatiquement à chaque interaction.", category: "AI/ML", author: "S-Rank", isOfficial: true, installs: 5200, rating: 50 },
+  { id: "51", name: "Proactive Agent", description: "L'agent anticipe tes besoins. Il surveille, détecte des patterns et propose des actions avant que tu ne les demandes.", category: "AI/ML", author: "S-Rank", isOfficial: true, installs: 3800, rating: 49 },
+
+  // ═══════ 🌐 WEB & BROWSER ═══════
+  { id: "1", name: "Web Scraper Pro", description: "Extraire des données de n'importe quel site web. Tables, texte, images, liens. Anti-détection, pagination auto, export CSV/JSON.", category: "Web", author: "S-Rank", isOfficial: true, installs: 3540, rating: 48 },
+  { id: "52", name: "Agent Browser", description: "L'agent navigue le web comme un humain. Remplir des formulaires, cliquer, capturer des screenshots, extraire du contenu.", category: "Web", author: "S-Rank", isOfficial: true, installs: 4100, rating: 49 },
+  { id: "53", name: "Web Search", description: "Recherche web en temps réel via Google, Bing ou DuckDuckGo. Résultats filtrés, résumés, avec sources citées.", category: "Web", author: "S-Rank", isOfficial: true, installs: 3200, rating: 48 },
+  { id: "54", name: "Website Monitor", description: "Surveille des pages web. Alerte quand un prix change, un produit revient en stock, ou un contenu est modifié.", category: "Web", author: "S-Rank", isOfficial: true, installs: 1890, rating: 46 },
+
+  // ═══════ 📊 DATA & ANALYTICS ═══════
+  { id: "2", name: "Data Analyst", description: "Analyser CSV, Excel, SQL. Graphiques, stats, rapports automatiques. Pandas, Matplotlib, export PDF.", category: "Data", author: "S-Rank", isOfficial: true, installs: 2890, rating: 48 },
+  { id: "16", name: "Neon PostgreSQL", description: "Base de données serverless. Schema, migrations Drizzle ORM, branching DB, requêtes optimisées.", category: "Data", author: "S-Rank", isOfficial: true, installs: 1560, rating: 46 },
+  { id: "17", name: "Upstash Redis", description: "Cache, sessions, rate limiting, queues. Redis serverless en 1 commande.", category: "Data", author: "S-Rank", isOfficial: true, installs: 1200, rating: 45 },
+  { id: "55", name: "Summarizer", description: "Résume n'importe quel contenu : articles, PDFs, vidéos YouTube, threads Twitter, pages web. Résumés structurés.", category: "Data", author: "S-Rank", isOfficial: true, installs: 3600, rating: 48 },
+  { id: "56", name: "JSON/CSV Transformer", description: "Convertir, transformer, fusionner des fichiers de données. JSON ↔ CSV ↔ Excel ↔ SQL. Nettoyage automatique.", category: "Data", author: "S-Rank", isOfficial: true, installs: 1400, rating: 45 },
+
+  // ═══════ 💻 DEVELOPMENT ═══════
+  { id: "5", name: "API Builder", description: "APIs REST et GraphQL. Documentation auto, tests, déploiement. OpenAPI spec généré.", category: "Development", author: "S-Rank", isOfficial: true, installs: 1820, rating: 47 },
+  { id: "19", name: "GitHub Automator", description: "Repos, branches, PRs, issues, Actions. Automatise tout ton workflow Git. Code review IA.", category: "Development", author: "S-Rank", isOfficial: true, installs: 2650, rating: 48 },
+  { id: "57", name: "Code Reviewer", description: "Analyse ton code, détecte les bugs, propose des optimisations. Supporte 15+ langages. Revue de sécurité incluse.", category: "Development", author: "S-Rank", isOfficial: true, installs: 2100, rating: 47 },
+  { id: "58", name: "Test Generator", description: "Génère des tests unitaires, d'intégration et E2E automatiquement à partir de ton code. Jest, Pytest, Playwright.", category: "Development", author: "S-Rank", isOfficial: true, installs: 1750, rating: 46 },
+  { id: "59", name: "Documentation Generator", description: "Génère une documentation technique complète depuis le code. README, API docs, guides, diagrammes.", category: "Development", author: "S-Rank", isOfficial: true, installs: 1350, rating: 45 },
+
+  // ═══════ 🚀 DEVOPS & DEPLOY ═══════
+  { id: "3", name: "DevOps Auto", description: "CI/CD, Docker, Kubernetes. Déploiement automatisé. GitHub Actions, monitoring, alertes.", category: "DevOps", author: "S-Rank", isOfficial: true, installs: 1960, rating: 47 },
   { id: "14", name: "Vercel Deployer", description: "Déploiement auto sur Vercel. Preview deploys, domaine custom, variables d'environnement.", category: "DevOps", author: "S-Rank", isOfficial: true, installs: 1780, rating: 47 },
   { id: "15", name: "Hetzner Cloud Manager", description: "Provisionner des VPS, Docker, firewalls, SSH. Infra cloud complète via API.", category: "DevOps", author: "S-Rank", isOfficial: true, installs: 1340, rating: 46 },
-  { id: "16", name: "Neon PostgreSQL", description: "Base de données serverless. Schema, migrations Drizzle ORM, branching DB.", category: "Data", author: "S-Rank", isOfficial: true, installs: 1560, rating: 46 },
-  { id: "17", name: "Upstash Redis", description: "Cache, sessions, rate limiting, queues. Redis serverless en 1 commande.", category: "Data", author: "S-Rank", isOfficial: true, installs: 1200, rating: 45 },
-  { id: "18", name: "Telegram Bot", description: "Créer et déployer un bot Telegram. Commandes, menus, notifications, webhooks.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 890, rating: 44 },
-  { id: "19", name: "GitHub Automator", description: "Repos, branches, PRs, issues, Actions. Automatise tout ton workflow Git.", category: "Development", author: "S-Rank", isOfficial: true, installs: 1650, rating: 47 },
-  { id: "20", name: "Twilio SMS/Voice", description: "Envoi de SMS, appels vocaux, vérification 2FA. Intégration Twilio complète.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 720, rating: 43 },
-  // ── Community Skills ──
-  { id: "8", name: "Email Automator", description: "Templates email, envoi en masse, suivi des ouvertures.", category: "Marketing", author: "Community", isOfficial: false, installs: 540, rating: 42 },
-  { id: "9", name: "Git Workflow", description: "Branches, merge, conflict resolution, changelog auto.", category: "Development", author: "Community", isOfficial: false, installs: 760, rating: 43 },
-  { id: "10", name: "Database Manager", description: "Migrations, backups, queries optimisées, monitoring.", category: "Data", author: "Community", isOfficial: false, installs: 620, rating: 41 },
-  { id: "21", name: "Google Sheets Sync", description: "Lire, écrire, synchroniser des Google Sheets. Rapports automatisés.", category: "Data", author: "Community", isOfficial: false, installs: 480, rating: 40 },
-  { id: "22", name: "Discord Bot", description: "Bot Discord complet. Commandes, modération, webhooks, embeds.", category: "APIs", author: "Community", isOfficial: false, installs: 650, rating: 42 },
-  { id: "23", name: "Notion Connector", description: "Pages, databases, templates Notion. Sync bidirectionnel.", category: "Tools", author: "Community", isOfficial: false, installs: 390, rating: 39 },
-  { id: "24", name: "AWS S3 Manager", description: "Upload, download, buckets, permissions S3. CLI intégré.", category: "DevOps", author: "Community", isOfficial: false, installs: 510, rating: 41 },
-  { id: "25", name: "OpenAI Proxy", description: "Utiliser GPT-4o en parallèle de Claude pour comparaison de réponses.", category: "Tools", author: "Community", isOfficial: false, installs: 320, rating: 38 },
+  { id: "60", name: "Docker Compose Builder", description: "Génère des docker-compose.yml complexes. Multi-services, volumes, networks, healthchecks. Deploy en 1 commande.", category: "DevOps", author: "S-Rank", isOfficial: true, installs: 1450, rating: 46 },
+  { id: "61", name: "SSL & Domain Manager", description: "Certificats SSL Let's Encrypt, gestion DNS, domaine custom. HTTPS automatique.", category: "DevOps", author: "S-Rank", isOfficial: true, installs: 980, rating: 44 },
+
+  // ═══════ ✍️ CONTENT & MARKETING ═══════
+  { id: "4", name: "Content Writer", description: "Articles, emails, posts sociaux, landing pages. SEO optimisé. Ton de voix personnalisable.", category: "Content", author: "S-Rank", isOfficial: true, installs: 3900, rating: 49 },
+  { id: "6", name: "SEO Optimizer", description: "Audit SEO complet, mots-clés, meta tags, sitemap, Core Web Vitals, analyse concurrentielle.", category: "Marketing", author: "S-Rank", isOfficial: true, installs: 1580, rating: 46 },
+  { id: "62", name: "Humanize AI Text", description: "Réécrire du texte IA pour qu'il semble écrit par un humain. Anti-détection GPTZero, Turnitin, Originality.", category: "Content", author: "S-Rank", isOfficial: true, installs: 3100, rating: 48 },
+  { id: "63", name: "Social Media Manager", description: "Planifier et publier sur Twitter/X, LinkedIn, Instagram. Hashtags, analytics, calendrier éditorial.", category: "Marketing", author: "S-Rank", isOfficial: true, installs: 1650, rating: 46 },
+  { id: "64", name: "Email Campaign Builder", description: "Templates email, séquences automatisées, A/B testing, suivi ouvertures/clics. SendGrid, Mailchimp, Resend.", category: "Marketing", author: "S-Rank", isOfficial: true, installs: 1250, rating: 45 },
+
+  // ═══════ 🔌 APIS & INTEGRATIONS ═══════
+  { id: "12", name: "Stripe Integration", description: "Paiements, abonnements, checkout, webhooks, customer portal. Setup Stripe complet en 5 minutes.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 2100, rating: 48 },
+  { id: "13", name: "Clerk Auth Setup", description: "Authentification OAuth (Google, GitHub), JWT, webhooks, middleware. Prêt en 2 minutes.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 1950, rating: 47 },
+  { id: "18", name: "Telegram Bot", description: "Bot Telegram complet. Commandes, menus inline, notifications, webhooks, paiements.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 1290, rating: 46 },
+  { id: "20", name: "Twilio SMS/Voice", description: "Envoi de SMS, appels vocaux, vérification 2FA. Intégration Twilio complète.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 920, rating: 44 },
+  { id: "65", name: "WhatsApp Business", description: "Envoyer/recevoir des messages WhatsApp Business API. Templates, médias, chatbot automatisé.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 1780, rating: 47 },
+  { id: "66", name: "Google Workspace", description: "Gmail, Calendar, Docs, Sheets, Drive. Lire, écrire, organiser. Automatisation complète Google.", category: "APIs", author: "S-Rank", isOfficial: true, installs: 2800, rating: 49 },
+
+  // ═══════ 🛠️ TOOLS & PRODUCTIVITY ═══════
+  { id: "7", name: "PDF Generator", description: "Rapports PDF, factures, certificats, contrats à partir de données. Templates personnalisables.", category: "Tools", author: "S-Rank", isOfficial: true, installs: 1500, rating: 46 },
+  { id: "67", name: "File Converter", description: "Convertir entre formats : PDF↔DOCX, PNG↔SVG, MP4↔MP3, XLSX↔CSV. 50+ formats supportés.", category: "Tools", author: "S-Rank", isOfficial: true, installs: 1350, rating: 45 },
+  { id: "68", name: "Image Generator", description: "Générer des images IA via DALL-E, Stable Diffusion, Midjourney API. Logos, illustrations, mockups.", category: "AI/ML", author: "S-Rank", isOfficial: true, installs: 2200, rating: 47 },
+  { id: "69", name: "Voice & Audio", description: "Text-to-Speech, Speech-to-Text, transcription audio/vidéo. Whisper, ElevenLabs, Google TTS.", category: "AI/ML", author: "S-Rank", isOfficial: true, installs: 1100, rating: 45 },
+  { id: "70", name: "Calendar Manager", description: "Gérer Google Calendar, CalDAV. Créer, modifier, supprimer des événements. Rappels automatiques.", category: "Tools", author: "S-Rank", isOfficial: true, installs: 1650, rating: 46 },
+  { id: "71", name: "Obsidian Sync", description: "Lire, écrire, organiser des notes Obsidian. Backlinks, tags, recherche full-text. Second brain piloté par IA.", category: "Tools", author: "S-Rank", isOfficial: true, installs: 1450, rating: 46 },
+
+  // ═══════ 🌍 COMMUNITY SKILLS ═══════
+  { id: "8", name: "Email Automator", description: "Templates email, envoi en masse, suivi des ouvertures. SMTP personnalisé.", category: "Marketing", author: "Community", isOfficial: false, installs: 840, rating: 43 },
+  { id: "9", name: "Git Workflow", description: "Branches, merge, conflict resolution, changelog auto, semantic versioning.", category: "Development", author: "Community", isOfficial: false, installs: 960, rating: 44 },
+  { id: "10", name: "Database Manager", description: "Migrations, backups, queries optimisées, monitoring. Multi-DB (Postgres, MySQL, SQLite).", category: "Data", author: "Community", isOfficial: false, installs: 720, rating: 42 },
+  { id: "21", name: "Google Sheets Sync", description: "Lire, écrire, synchroniser des Google Sheets. Rapports automatisés, formules.", category: "Data", author: "Community", isOfficial: false, installs: 680, rating: 41 },
+  { id: "22", name: "Discord Bot", description: "Bot Discord complet. Commandes slash, modération, webhooks, embeds, rôles.", category: "APIs", author: "Community", isOfficial: false, installs: 850, rating: 43 },
+  { id: "23", name: "Notion Connector", description: "Pages, databases, templates Notion. Sync bidirectionnel, automatisation workflow.", category: "Tools", author: "Community", isOfficial: false, installs: 590, rating: 41 },
+  { id: "24", name: "AWS S3 Manager", description: "Upload, download, buckets, permissions S3. CLI intégré, CDN CloudFront.", category: "DevOps", author: "Community", isOfficial: false, installs: 710, rating: 42 },
+  { id: "25", name: "OpenAI Proxy", description: "Utiliser GPT-4o en parallèle de Claude pour comparaison de réponses. Multi-modèle.", category: "AI/ML", author: "Community", isOfficial: false, installs: 520, rating: 40 },
+  { id: "72", name: "Competitor Tracker", description: "Surveiller les sites de tes concurrents. Prix, features, SEO, réseaux sociaux. Rapports hebdo.", category: "Marketing", author: "Community", isOfficial: false, installs: 630, rating: 42 },
+  { id: "73", name: "Invoice Generator", description: "Créer des factures professionnelles, devis, bons de commande. Export PDF, envoi email auto.", category: "Tools", author: "Community", isOfficial: false, installs: 780, rating: 43 },
+  { id: "74", name: "Cron Scheduler", description: "Planifier des tâches récurrentes. Daily reports, backups, scraping, notifications. Crontab visuel.", category: "Tools", author: "Community", isOfficial: false, installs: 550, rating: 41 },
+  { id: "75", name: "YouTube Analyzer", description: "Extraire et analyser les données YouTube. Transcriptions, stats, tendances, résumés.", category: "Data", author: "Community", isOfficial: false, installs: 470, rating: 40 },
+  { id: "76", name: "Figma to Code", description: "Convertir des designs Figma en code React/HTML. Pixel-perfect, responsive, TailwindCSS.", category: "Development", author: "Community", isOfficial: false, installs: 890, rating: 44 },
+  { id: "77", name: "WordPress Manager", description: "Gérer un site WordPress. Posts, pages, plugins, thèmes, WooCommerce. API REST.", category: "Web", author: "Community", isOfficial: false, installs: 650, rating: 42 },
+  { id: "78", name: "Airtable Connector", description: "CRUD Airtable. Bases, tables, vues, filtres. Automatisation workflow.", category: "Data", author: "Community", isOfficial: false, installs: 420, rating: 39 },
+  { id: "79", name: "Linear Tracker", description: "Gestion de projet Linear. Issues, cycles, projets. Sync avec GitHub PRs.", category: "Tools", author: "Community", isOfficial: false, installs: 510, rating: 41 },
+  { id: "80", name: "Supabase Setup", description: "Backend-as-a-Service complet. Auth, DB PostgreSQL, Storage, Edge Functions, Realtime.", category: "Development", author: "Community", isOfficial: false, installs: 750, rating: 43 },
 ];
 
 export default function SkillsPage() {
