@@ -1,21 +1,36 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
-import { AuthSync } from "@/components/shared/auth-sync";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "S-Rank Agent — AI-Powered Cloud PC",
-  description: "Your AI-powered cloud PC. Ask, it executes.",
-  icons: { icon: "/favicon.ico" },
+  title: "S-Rank Agent",
+  description: "Ton PC cloud piloté par l'IA",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "S-Rank Agent",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#09090b",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider appearance={{ baseTheme: dark }}>
-      <html lang="en" className="dark">
-        <body className="min-h-screen bg-srank-bg text-srank-text-primary antialiased">
-          <AuthSync>{children}</AuthSync>
+      <html lang="fr" className="dark">
+        <head>
+          <link rel="apple-touch-icon" href="/icon-192.png" />
+        </head>
+        <body className="min-h-[100dvh] bg-zinc-950 text-white antialiased overflow-hidden">
+          {children}
         </body>
       </html>
     </ClerkProvider>

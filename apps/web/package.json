@@ -21,7 +21,8 @@
     "clsx": "^2.1.0",
     "tailwind-merge": "^2.3.0",
     "zod": "^3.23.0",
-    "@clerk/themes": "^2.1.0"
+    "@clerk/themes": "^2.1.0",
+    "hono": "^4.4.0"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

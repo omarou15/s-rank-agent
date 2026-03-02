@@ -1,81 +1,58 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useChatStore } from "@/lib/stores/chat-store";
-import { useApi } from "@/lib/hooks/use-api";
-import { api } from "@/lib/api";
-import { ChatMessage } from "@/components/chat/chat-message";
 import { ChatInput } from "@/components/chat/chat-input";
-import { ConversationList } from "@/components/chat/conversation-list";
-
-interface Conversation {
-  id: string;
-  title: string;
-  updatedAt: string;
-}
+import { Bot, User, Key } from "lucide-react";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   status: "complete" | "streaming" | "error";
-  tokensInput?: number;
-  tokensOutput?: number;
-  costUsd?: number;
 }
 
 export default function ChatPage() {
-  const { get, post, del } = useApi();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [currentConvId, setCurrentConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [showKeyInput, setShowKeyInput] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const keyInputRef = useRef<HTMLInputElement>(null);
 
-  // Load conversations on mount
   useEffect(() => {
-    get<{ conversations: Conversation[] }>("/chat/conversations")
-      .then((data) => setConversations(data.conversations || []))
-      .catch(() => {});
+    const stored = typeof window !== "undefined" ? localStorage.getItem("s-rank-api-key") : null;
+    if (stored) setApiKey(stored);
+    else setShowKeyInput(true);
   }, []);
 
-  // Load messages when conversation changes
-  useEffect(() => {
-    if (!currentConvId) { setMessages([]); return; }
-    get<{ messages: Message[] }>(`/chat/conversations/${currentConvId}/messages`)
-      .then((data) => setMessages((data.messages || []).map((m) => ({ ...m, status: "complete" as const }))))
-      .catch(() => {});
-  }, [currentConvId]);
-
-  // Auto-scroll
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || streaming) return;
-    const content = input.trim();
-    setInput("");
+  const saveApiKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem("s-rank-api-key", key);
+    setShowKeyInput(false);
+  };
 
-    // Optimistic user message
-    const userMsg: Message = { id: `tmp-${Date.now()}`, role: "user", content, status: "complete" };
-    setMessages((prev) => [...prev, userMsg]);
+  const sendMessage = useCallback(async (content: string) => {
+    if (!content.trim() || streaming) return;
+    if (!apiKey) { setShowKeyInput(true); return; }
 
-    // Assistant placeholder
-    const assistantId = `tmp-a-${Date.now()}`;
-    setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "", status: "streaming" }]);
+    const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content, status: "complete" };
+    const assistantId = `a-${Date.now()}`;
+    setMessages((prev) => [...prev, userMsg, { id: assistantId, role: "assistant", content: "", status: "streaming" }]);
     setStreaming(true);
 
     try {
-      const token = await api.getToken();
-      const response = await fetch(`${api.baseUrl}/chat/stream`, {
+      const history = messages.filter((m) => m.status === "complete").map((m) => ({ role: m.role, content: m.content }));
+      const response = await fetch("/api/chat/stream", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content, conversationId: currentConvId }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, apiKey, history }),
       });
 
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: "Stream failed" }));
-        setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: err.error || "Erreur", status: "error" } : m));
+        const err = await response.json().catch(() => ({ error: "Erreur" }));
+        setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: err.error || "Erreur API", status: "error" as const } : m));
         setStreaming(false);
         return;
       }
@@ -85,125 +62,142 @@ export default function ChatPage() {
 
       const decoder = new TextDecoder();
       let fullText = "";
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
-          const raw = line.replace("data: ", "");
+          if (line.startsWith("event:") || !line.startsWith("data: ")) continue;
+          const raw = line.slice(6);
+          if (raw === "[DONE]") continue;
           try {
             const event = JSON.parse(raw);
-
-            if (event.type === "text_delta") {
-              fullText += event.data;
+            if (event.type === "content_block_delta" && event.delta?.text) {
+              fullText += event.delta.text;
               setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: fullText } : m));
             }
-
-            if (event.type === "done") {
-              // Update conversation id if new
-              if (event.conversationId && !currentConvId) {
-                setCurrentConvId(event.conversationId);
-              }
-              setMessages((prev) => prev.map((m) => m.id === assistantId ? {
-                ...m, content: fullText, status: "complete",
-                tokensInput: event.tokensInput, tokensOutput: event.tokensOutput, costUsd: event.costUsd,
-              } : m));
-
-              // Refresh conversation list
-              get<{ conversations: Conversation[] }>("/chat/conversations")
-                .then((data) => setConversations(data.conversations || []))
-                .catch(() => {});
-            }
-
-            if (event.type === "error") {
-              setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: event.data || "Erreur", status: "error" } : m));
-            }
-          } catch { /* skip malformed */ }
+          } catch {}
         }
       }
+
+      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: fullText || "...", status: "complete" as const } : m));
     } catch (err: any) {
-      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: err.message || "Erreur réseau", status: "error" } : m));
+      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: err.message || "Erreur réseau", status: "error" as const } : m));
     } finally {
       setStreaming(false);
     }
-  }, [input, streaming, currentConvId, get]);
+  }, [apiKey, streaming, messages]);
 
-  const executeCode = async (code: string, language?: string) => {
-    const execId = `exec-${Date.now()}`;
-    setMessages((prev) => [...prev, { id: execId, role: "assistant", content: "\u23F3 Ex\u00E9cution en cours...", status: "streaming" }]);
-    try {
-      const result = await post<{ stdout: string; stderr: string; exitCode: number; duration: number }>("/chat/execute", { code, language });
-      const output = result.exitCode === 0
-        ? `\`\`\`\n${result.stdout}\n\`\`\`\n\u2705 Termin\u00E9 en ${result.duration}ms`
-        : `\`\`\`\n${result.stderr || result.stdout}\n\`\`\`\n\u274C Exit code: ${result.exitCode}`;
-      setMessages((prev) => prev.map((m) => m.id === execId ? { ...m, content: output, status: "complete" } : m));
-    } catch (err: any) {
-      setMessages((prev) => prev.map((m) => m.id === execId ? { ...m, content: `\u274C ${err.message}`, status: "error" } : m));
-    }
-  };
-
-  const newConversation = () => {
-    setCurrentConvId(null);
-    setMessages([]);
-    setInput("");
-  };
-
-  const deleteConversation = async (id: string) => {
-    if (!confirm("Supprimer cette conversation ?")) return;
-    try {
-      await del(`/chat/conversations/${id}`);
-      setConversations((prev) => prev.filter((c) => c.id !== id));
-      if (currentConvId === id) newConversation();
-    } catch { /* ignore */ }
+  const renderContent = (content: string) => {
+    const parts = content.split(/(```[\s\S]*?```)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("```")) {
+        const lines = part.split("\n");
+        const lang = lines[0].replace("```", "").trim();
+        const code = lines.slice(1, -1).join("\n");
+        return (
+          <pre key={i} className="bg-zinc-950 rounded-lg p-3 my-2 overflow-x-auto text-sm">
+            {lang && <div className="text-xs text-zinc-500 mb-1">{lang}</div>}
+            <code className="text-emerald-400">{code}</code>
+          </pre>
+        );
+      }
+      return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+    });
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <ConversationList
-        conversations={conversations}
-        currentId={currentConvId}
-        onSelect={setCurrentConvId}
-        onNew={newConversation}
-      />
-
-      {/* Chat area */}
-      <div className="flex-1 flex flex-col">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-srank-text-muted">
-              <span className="text-6xl mb-4">{"\u{1F3C6}"}</span>
-              <h2 className="text-xl font-semibold text-srank-text-primary mb-2">S-Rank Agent</h2>
-              <p className="text-sm">Demande-moi d'ex\u00E9cuter du code, g\u00E9rer des fichiers, ou n'importe quoi.</p>
+    <div className="flex flex-col h-full bg-zinc-950">
+      {showKeyInput && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full">
+            <div className="flex items-center gap-2 mb-4">
+              <Key className="text-violet-400" size={20} />
+              <h2 className="text-lg font-semibold text-white">Clé API Claude</h2>
             </div>
-          )}
-
-          {messages.map((msg) => (
-            <ChatMessage
-              key={msg.id}
-              role={msg.role}
-              content={msg.content}
-              status={msg.status}
-              tokensInput={msg.tokensInput}
-              tokensOutput={msg.tokensOutput}
-              costUsd={msg.costUsd}
+            <p className="text-sm text-zinc-400 mb-4">
+              S-Rank utilise ta propre clé API Anthropic (BYOK). Elle reste dans ton navigateur.
+            </p>
+            <input
+              ref={keyInputRef}
+              type="password"
+              placeholder="sk-ant-api..."
+              defaultValue={apiKey}
+              className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm mb-4 focus:outline-none focus:border-violet-500"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const val = (e.target as HTMLInputElement).value;
+                  if (val.startsWith("sk-ant-")) saveApiKey(val);
+                }
+              }}
             />
-          ))}
-          <div ref={bottomRef} />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const val = keyInputRef.current?.value || "";
+                  if (val.startsWith("sk-ant-")) saveApiKey(val);
+                }}
+                className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-medium transition-colors"
+              >
+                Sauvegarder
+              </button>
+              {apiKey && (
+                <button onClick={() => setShowKeyInput(false)} className="px-4 text-zinc-400 hover:text-white text-sm">
+                  Annuler
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+      )}
 
-        {/* Input */}
-        <ChatInput
-          value={input}
-          onChange={setInput}
-          onSend={sendMessage}
-          disabled={streaming}
-        />
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-zinc-500">
+            <span className="text-6xl mb-4">🏆</span>
+            <h2 className="text-xl font-semibold text-white mb-2">S-Rank Agent</h2>
+            <p className="text-sm text-zinc-400 text-center">Demande-moi n&apos;importe quoi. Code, fichiers, déploiement...</p>
+          </div>
+        )}
+
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
+            {msg.role === "assistant" && (
+              <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0 mt-1">
+                <Bot size={14} className="text-white" />
+              </div>
+            )}
+            <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
+              msg.role === "user" ? "bg-violet-600 text-white"
+                : msg.status === "error" ? "bg-red-900/30 border border-red-800 text-red-300"
+                : "bg-zinc-800 text-zinc-100"
+            }`}>
+              {renderContent(msg.content)}
+              {msg.status === "streaming" && !msg.content && (
+                <span className="inline-flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </span>
+              )}
+            </div>
+            {msg.role === "user" && (
+              <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0 mt-1">
+                <User size={14} className="text-white" />
+              </div>
+            )}
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="border-t border-zinc-800 p-4">
+        <ChatInput onSend={sendMessage} disabled={streaming} />
       </div>
     </div>
   );
