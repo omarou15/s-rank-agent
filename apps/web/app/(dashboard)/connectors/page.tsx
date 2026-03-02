@@ -1,137 +1,177 @@
 "use client";
 
-import { useState } from "react";
-import { CONNECTORS } from "@/lib/shared";
+import { useState, useEffect } from "react";
+import { ExternalLink, Info, CheckCircle, XCircle, Loader2 } from "lucide-react";
 
-type Status = "connected" | "disconnected" | "error";
+interface Connector {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  category: string;
+  enabled: boolean;
+  token: string;
+  status: "connected" | "error" | "disconnected";
+  tokenGuide: string;
+  tokenPlaceholder: string;
+}
+
+const DEFAULT_CONNECTORS: Connector[] = [
+  { id: "github", name: "GitHub", icon: "🐙", description: "Clone, commit, push, pull requests, issues", category: "Code",
+    enabled: false, token: "", status: "disconnected", tokenGuide: "https://github.com/settings/tokens", tokenPlaceholder: "ghp_..." },
+  { id: "slack", name: "Slack", icon: "💬", description: "Envoyer/lire des messages, channels", category: "Communication",
+    enabled: false, token: "", status: "disconnected", tokenGuide: "https://api.slack.com/apps", tokenPlaceholder: "xoxb-..." },
+  { id: "gdrive", name: "Google Drive", icon: "📁", description: "Upload, download, partage de fichiers", category: "Stockage",
+    enabled: false, token: "", status: "disconnected", tokenGuide: "https://console.cloud.google.com/apis/credentials", tokenPlaceholder: "ya29...." },
+  { id: "postgres", name: "PostgreSQL", icon: "🐘", description: "Requêtes SQL, migrations, backups", category: "Base de données",
+    enabled: false, token: "", status: "disconnected", tokenGuide: "", tokenPlaceholder: "postgresql://user:pass@host/db" },
+  { id: "stripe", name: "Stripe", icon: "💳", description: "Paiements, clients, webhooks", category: "APIs",
+    enabled: false, token: "", status: "disconnected", tokenGuide: "https://dashboard.stripe.com/apikeys", tokenPlaceholder: "sk_test_..." },
+  { id: "vercel", name: "Vercel", icon: "▲", description: "Déployer, preview, logs", category: "Déploiement",
+    enabled: false, token: "", status: "disconnected", tokenGuide: "https://vercel.com/account/tokens", tokenPlaceholder: "vcp_..." },
+];
 
 export default function ConnectorsPage() {
-  const [statuses, setStatuses] = useState<Record<string, Status>>({});
-  const [showModal, setShowModal] = useState<string | null>(null);
+  const [connectors, setConnectors] = useState<Connector[]>(DEFAULT_CONNECTORS);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
 
-  const currentConnector = CONNECTORS.find((c) => c.type === showModal);
+  useEffect(() => {
+    const stored = localStorage.getItem("s-rank-connectors");
+    if (stored) {
+      try {
+        const saved = JSON.parse(stored) as Record<string, { enabled: boolean; token: string; status: string }>;
+        setConnectors((prev) => prev.map((c) => saved[c.id] ? { ...c, ...saved[c.id] } as Connector : c));
+      } catch {}
+    }
+  }, []);
 
-  const CATEGORY_LABELS: Record<string, string> = {
-    code: "💻 Code",
-    communication: "💬 Communication",
-    storage: "💾 Stockage",
-    database: "🗄️ Base de données",
-    api: "🔗 APIs",
-    deployment: "🚀 Déploiement",
+  const save = (updated: Connector[]) => {
+    setConnectors(updated);
+    const data: Record<string, any> = {};
+    updated.forEach((c) => { data[c.id] = { enabled: c.enabled, token: c.token, status: c.status }; });
+    localStorage.setItem("s-rank-connectors", JSON.stringify(data));
   };
 
-  const categories = [...new Set(CONNECTORS.map((c) => c.category))];
+  const toggleConnector = (id: string) => {
+    save(connectors.map((c) => c.id === id ? { ...c, enabled: !c.enabled, status: !c.enabled && c.token ? "connected" : "disconnected" } : c));
+  };
+
+  const saveToken = (id: string, token: string) => {
+    save(connectors.map((c) => c.id === id ? { ...c, token, status: token ? "connected" : "disconnected", enabled: !!token } : c));
+    setEditingId(null);
+  };
+
+  const testConnector = async (id: string) => {
+    setTestingId(id);
+    // Simulate test — in production this would call the VPS API
+    await new Promise((r) => setTimeout(r, 1500));
+    const c = connectors.find((c) => c.id === id);
+    const ok = !!(c?.token);
+    save(connectors.map((c) => c.id === id ? { ...c, status: ok ? "connected" : "error" } : c));
+    setTestingId(null);
+  };
+
+  const categories = [...new Set(connectors.map((c) => c.category))];
 
   return (
-    <div className="h-screen overflow-y-auto">
-      <div className="px-6 py-4 border-b border-srank-border">
-        <h1 className="text-lg font-semibold">Connecteurs MCP</h1>
-        <p className="text-xs text-srank-text-muted mt-1">
-          Connecte tes services en 1 clic. L&apos;agent pourra interagir avec eux.
-        </p>
-      </div>
+    <div className="h-full overflow-y-auto">
+      <div className="px-4 py-6 max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-lg font-semibold text-white">Connecteurs MCP</h1>
+            <p className="text-xs text-zinc-500 mt-1">Connecte tes services en 1 clic</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            {connectors.filter((c) => c.status === "connected").length} actifs
+          </div>
+        </div>
 
-      <div className="p-6 space-y-8">
         {categories.map((cat) => (
-          <div key={cat}>
-            <h2 className="text-sm font-semibold text-srank-text-secondary mb-3">
-              {CATEGORY_LABELS[cat] || cat}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {CONNECTORS.filter((c) => c.category === cat).map((connector) => {
-                const status = statuses[connector.type] || "disconnected";
-                return (
-                  <div
-                    key={connector.type}
-                    className="p-4 rounded-xl bg-srank-card border border-srank-border hover:border-srank-primary/20 transition-all"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-sm">{connector.name}</h3>
-                        <p className="text-xs text-srank-text-muted mt-0.5">{connector.description}</p>
+          <div key={cat} className="mb-6">
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">{cat}</h2>
+            <div className="space-y-3">
+              {connectors.filter((c) => c.category === cat).map((connector) => (
+                <div key={connector.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{connector.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-white">{connector.name}</span>
+                        {connector.status === "connected" && <CheckCircle size={14} className="text-emerald-400" />}
+                        {connector.status === "error" && <XCircle size={14} className="text-red-400" />}
                       </div>
-                      <div
-                        className={`w-2.5 h-2.5 rounded-full mt-1 ${
-                          status === "connected" ? "bg-srank-green" :
-                          status === "error" ? "bg-srank-red" :
-                          "bg-srank-text-muted"
-                        }`}
-                      />
+                      <p className="text-xs text-zinc-500">{connector.description}</p>
                     </div>
-                    <button
-                      onClick={() => setShowModal(connector.type)}
-                      className={`w-full py-2 text-xs font-medium rounded-lg transition-colors ${
-                        status === "connected"
-                          ? "bg-srank-green/10 text-srank-green border border-srank-green/20"
-                          : "bg-srank-primary/10 text-srank-primary border border-srank-primary/20 hover:bg-srank-primary/20"
-                      }`}
-                    >
-                      {status === "connected" ? "✓ Connecté" : "Connecter"}
+
+                    {/* Toggle */}
+                    <button onClick={() => toggleConnector(connector.id)}
+                      className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${
+                        connector.enabled ? "bg-violet-600" : "bg-zinc-700"
+                      }`}>
+                      <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                        connector.enabled ? "translate-x-5" : "translate-x-0"
+                      }`} />
                     </button>
                   </div>
-                );
-              })}
+
+                  {/* Token section */}
+                  {connector.enabled && (
+                    <div className="mt-3 pt-3 border-t border-zinc-800">
+                      {editingId === connector.id ? (
+                        <div className="flex gap-2">
+                          <input
+                            type="password"
+                            defaultValue={connector.token}
+                            placeholder={connector.tokenPlaceholder}
+                            className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveToken(connector.id, (e.target as HTMLInputElement).value);
+                              if (e.key === "Escape") setEditingId(null);
+                            }}
+                            autoFocus
+                          />
+                          <button onClick={(e) => {
+                            const input = (e.target as HTMLElement).parentElement?.querySelector("input") as HTMLInputElement;
+                            saveToken(connector.id, input?.value || "");
+                          }} className="px-3 py-1.5 text-xs bg-violet-600 text-white rounded-lg">OK</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-zinc-500">
+                              {connector.token ? `${connector.token.substring(0, 8)}${"•".repeat(12)}` : "Pas de token"}
+                            </span>
+                            {connector.tokenGuide && (
+                              <a href={connector.tokenGuide} target="_blank" rel="noopener noreferrer"
+                                className="text-violet-400 hover:text-violet-300">
+                                <Info size={14} />
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => setEditingId(connector.id)}
+                              className="px-2 py-1 text-xs bg-zinc-800 text-zinc-400 rounded hover:bg-zinc-700">
+                              {connector.token ? "Modifier" : "Ajouter token"}
+                            </button>
+                            {connector.token && (
+                              <button onClick={() => testConnector(connector.id)} disabled={testingId === connector.id}
+                                className="px-2 py-1 text-xs bg-zinc-800 text-zinc-400 rounded hover:bg-zinc-700 disabled:opacity-50">
+                                {testingId === connector.id ? <Loader2 size={12} className="animate-spin" /> : "Tester"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         ))}
       </div>
-
-      {/* Connect Modal */}
-      {showModal && currentConnector && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-srank-surface border border-srank-border rounded-2xl w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold mb-1">Connecter {currentConnector.name}</h2>
-            <p className="text-xs text-srank-text-muted mb-4">{currentConnector.description}</p>
-
-            <label className="block text-sm font-medium mb-2">
-              {currentConnector.tokenGuide.label}
-              <a
-                href={currentConnector.tokenGuide.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-2 text-srank-primary hover:underline inline-flex items-center gap-1"
-              >
-                ℹ️ Comment l&apos;obtenir
-              </a>
-            </label>
-
-            <input
-              type="password"
-              placeholder={`Colle ton ${currentConnector.tokenGuide.label} ici...`}
-              className="w-full bg-srank-card border border-srank-border rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:border-srank-primary"
-            />
-
-            <div className="bg-srank-card rounded-lg p-3 mb-4">
-              <p className="text-xs font-medium mb-2 text-srank-text-secondary">Étapes :</p>
-              <ol className="space-y-1">
-                {currentConnector.tokenGuide.steps.map((step, i) => (
-                  <li key={i} className="text-xs text-srank-text-muted">
-                    {i + 1}. {step}
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowModal(null)}
-                className="flex-1 py-2.5 text-sm bg-srank-card border border-srank-border rounded-lg hover:bg-srank-hover transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => {
-                  setStatuses((prev) => ({ ...prev, [currentConnector.type]: "connected" }));
-                  setShowModal(null);
-                }}
-                className="flex-1 py-2.5 text-sm bg-srank-primary text-white rounded-lg hover:bg-srank-primary-600 transition-colors"
-              >
-                Connecter
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

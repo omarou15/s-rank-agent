@@ -1,154 +1,156 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useApi } from "@/lib/hooks/use-api";
-import { StatCard } from "@/components/monitoring/stat-card";
-import { ResourceBar } from "@/components/monitoring/resource-bar";
-import { ActivityLog } from "@/components/monitoring/activity-log";
-
-interface Usage {
-  totalInput: number;
-  totalOutput: number;
-  totalCost: number;
-  messageCount: number;
-}
+import { Cpu, HardDrive, Activity, DollarSign, Clock, Wifi, WifiOff, RefreshCw } from "lucide-react";
 
 interface Metrics {
-  cpuPercent: number;
-  ramUsedMb: number;
-  ramTotalMb: number;
-  diskUsedGb: number;
-  diskTotalGb: number;
-  uptimeSeconds: number;
-}
-
-interface LogEntry {
-  id: string;
-  action: string;
-  description: string;
-  status: "success" | "error";
-  costUsd?: number;
-  createdAt: string;
-}
-
-interface DashboardData {
-  server: { status: string; size: string; ip: string } | null;
-  connectors: { total: number; active: number; errors: number };
-  skills: { installed: number; active: number };
+  cpu: number;
+  memUsed: number;
+  memTotal: number;
+  uptime: number;
 }
 
 export default function MonitoringPage() {
-  const { get, loading } = useApi();
-  const [usage, setUsage] = useState<Usage>({ totalInput: 0, totalOutput: 0, totalCost: 0, messageCount: 0 });
   const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [period, setPeriod] = useState<"day" | "week" | "month">("month");
+  const [loading, setLoading] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
+  const fetchMetrics = async () => {
+    try {
+      const res = await fetch("/api/server/metrics");
+      const data = await res.json();
+      setMetrics(data);
+    } catch { setMetrics(null); }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchMetrics(); }, []);
   useEffect(() => {
-    get<{ usage: Usage }>(`/monitoring/usage?period=${period}`)
-      .then((d) => setUsage(d.usage))
-      .catch(() => {});
+    if (!autoRefresh) return;
+    const interval = setInterval(fetchMetrics, 5000);
+    return () => clearInterval(interval);
+  }, [autoRefresh]);
 
-    get<{ metrics: Metrics }>("/servers/metrics")
-      .then((d) => setMetrics(d.metrics))
-      .catch(() => setMetrics(null));
-
-    get<{ logs: LogEntry[] }>("/monitoring/logs?limit=20")
-      .then((d) => setLogs(d.logs || []))
-      .catch(() => {});
-
-    get<DashboardData>("/monitoring/dashboard")
-      .then((d) => setDashboard(d))
-      .catch(() => {});
-  }, [period]);
-
-  const formatUptime = (seconds: number) => {
-    const d = Math.floor(seconds / 86400);
-    const h = Math.floor((seconds % 86400) / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    return `${d}j ${h}h ${m}m`;
-  };
-
-  const formatTokens = (n: number) => {
-    if (n > 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n > 1_000) return `${(n / 1_000).toFixed(1)}K`;
-    return n.toString();
-  };
+  const memPercent = metrics ? Math.round((metrics.memUsed / metrics.memTotal) * 100) : 0;
+  const uptimeStr = metrics ? (() => {
+    const h = Math.floor(metrics.uptime / 3600);
+    const m = Math.floor((metrics.uptime % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  })() : "—";
 
   return (
-    <div className="h-screen overflow-y-auto">
-      <div className="px-6 py-6 max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Monitoring</h1>
-          <div className="flex gap-1 bg-srank-card border border-srank-border rounded-lg p-0.5">
-            {(["day", "week", "month"] as const).map((p) => (
-              <button key={p} onClick={() => setPeriod(p)}
-                className={`px-3 py-1 text-xs rounded-md transition-colors ${period === p ? "bg-srank-primary text-white" : "text-srank-text-muted hover:text-srank-text-primary"}`}>
-                {p === "day" ? "24h" : p === "week" ? "7j" : "30j"}
-              </button>
+    <div className="h-full overflow-y-auto">
+      <div className="px-4 py-6 max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-lg font-semibold text-white">Monitoring</h1>
+            <p className="text-xs text-zinc-500 mt-1">Métriques serveur en temps réel</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg ${autoRefresh ? "bg-emerald-600/20 text-emerald-400" : "bg-zinc-800 text-zinc-500"}`}>
+              {autoRefresh ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {autoRefresh ? "Live" : "Paused"}
+            </button>
+            <button onClick={fetchMetrics} className="p-1 text-zinc-500 hover:text-white">
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            </button>
+          </div>
+        </div>
+
+        {/* Status bar */}
+        <div className={`flex items-center gap-2 mb-6 p-3 rounded-lg ${metrics ? "bg-emerald-600/10 border border-emerald-800/30" : "bg-red-600/10 border border-red-800/30"}`}>
+          <span className={`w-2 h-2 rounded-full ${metrics ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`} />
+          <span className={`text-xs font-medium ${metrics ? "text-emerald-400" : "text-red-400"}`}>
+            {metrics ? "Serveur en ligne — 46.225.103.230" : "Serveur hors ligne"}
+          </span>
+        </div>
+
+        {/* Metrics cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Cpu size={14} className="text-cyan-400" />
+              <span className="text-xs text-zinc-500">CPU</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{metrics?.cpu || 0}</p>
+            <p className="text-[10px] text-zinc-600">vCPU cores</p>
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <HardDrive size={14} className="text-violet-400" />
+              <span className="text-xs text-zinc-500">RAM</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{memPercent}%</p>
+            <p className="text-[10px] text-zinc-600">{metrics?.memUsed || 0} / {metrics?.memTotal || 0} MB</p>
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock size={14} className="text-emerald-400" />
+              <span className="text-xs text-zinc-500">Uptime</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{uptimeStr}</p>
+            <p className="text-[10px] text-zinc-600">depuis le boot</p>
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign size={14} className="text-yellow-400" />
+              <span className="text-xs text-zinc-500">Coût serveur</span>
+            </div>
+            <p className="text-2xl font-bold text-white">3.95€</p>
+            <p className="text-[10px] text-zinc-600">/mois (CAX11)</p>
+          </div>
+        </div>
+
+        {/* RAM Bar */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-zinc-400">Utilisation mémoire</span>
+            <span className="text-xs text-zinc-500">{metrics?.memUsed || 0} / {metrics?.memTotal || 0} MB</span>
+          </div>
+          <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all duration-500 ${memPercent > 80 ? "bg-red-500" : memPercent > 50 ? "bg-yellow-500" : "bg-emerald-500"}`}
+              style={{ width: `${memPercent}%` }} />
+          </div>
+        </div>
+
+        {/* Server Info */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-6">
+          <h2 className="text-sm font-semibold text-white mb-3">Informations serveur</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "IP", value: "46.225.103.230" },
+              { label: "Type", value: "CAX11 (ARM)" },
+              { label: "OS", value: "Ubuntu 24.04" },
+              { label: "Location", value: "Nuremberg, DE" },
+              { label: "CPU", value: "2 vCPU Ampere" },
+              { label: "RAM", value: "4 GB" },
+              { label: "Stockage", value: "40 GB SSD" },
+              { label: "Hébergeur", value: "Hetzner Cloud" },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex justify-between py-1.5 border-b border-zinc-800/50 last:border-0">
+                <span className="text-xs text-zinc-500">{label}</span>
+                <span className="text-xs text-white font-mono">{value}</span>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Tokens utilis\u00E9s" value={formatTokens(usage.totalInput + usage.totalOutput)} color="cyan" sub={`${usage.messageCount} messages`} />
-          <StatCard label="Co\u00FBt API" value={`$${usage.totalCost.toFixed(2)}`} color="amber" sub={`Input: ${formatTokens(usage.totalInput)}`} />
-          <StatCard label="Connecteurs" value={dashboard?.connectors.active.toString() || "0"} color="green" sub={`${dashboard?.connectors.errors || 0} erreurs`} />
-          <StatCard label="Skills" value={dashboard?.skills.installed.toString() || "0"} color="primary" sub={`${dashboard?.skills.active || 0} actifs`} />
-        </div>
-
-        {/* Server Resources */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-5 rounded-xl bg-srank-card border border-srank-border">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold">Ressources Serveur</h2>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${dashboard?.server?.status === "running" ? "bg-srank-green/10 text-srank-green" : "bg-srank-red/10 text-srank-red"}`}>
-                {dashboard?.server?.status || "off"}
-              </span>
-            </div>
-
-            {metrics ? (
-              <>
-                <ResourceBar label="CPU" value={metrics.cpuPercent} color="cyan" />
-                <ResourceBar label="RAM" value={Math.round((metrics.ramUsedMb / metrics.ramTotalMb) * 100)} unit="%" color="primary" />
-                <ResourceBar label="Disque" value={Math.round((metrics.diskUsedGb / metrics.diskTotalGb) * 100)} unit="%" color="green" />
-                <div className="mt-3 flex items-center justify-between text-[10px] text-srank-text-muted">
-                  <span>Uptime: {formatUptime(metrics.uptimeSeconds)}</span>
-                  <span>{dashboard?.server?.ip || ""}</span>
-                </div>
-              </>
-            ) : (
-              <p className="text-xs text-srank-text-muted text-center py-8">Serveur non disponible</p>
-            )}
+        {/* API Costs placeholder */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity size={14} className="text-violet-400" />
+            <h2 className="text-sm font-semibold text-white">Coûts API Claude</h2>
           </div>
-
-          {/* Cost breakdown */}
-          <div className="p-5 rounded-xl bg-srank-card border border-srank-border">
-            <h2 className="text-sm font-semibold mb-4">D\u00E9tail des co\u00FBts</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-srank-text-muted">Tokens Input</span>
-                <span className="text-xs font-mono">{formatTokens(usage.totalInput)} \u2192 ${((usage.totalInput / 1_000_000) * 3).toFixed(3)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-srank-text-muted">Tokens Output</span>
-                <span className="text-xs font-mono">{formatTokens(usage.totalOutput)} \u2192 ${((usage.totalOutput / 1_000_000) * 15).toFixed(3)}</span>
-              </div>
-              <div className="border-t border-srank-border pt-3 flex justify-between items-center">
-                <span className="text-xs font-semibold">Total</span>
-                <span className="text-sm font-bold text-srank-amber">${usage.totalCost.toFixed(2)}</span>
-              </div>
-              <p className="text-[10px] text-srank-text-muted mt-2">
-                Tarif Sonnet 4 : $3/M input, $15/M output. Factur\u00E9 directement par Anthropic via votre cl\u00E9 API.
-              </p>
-            </div>
-          </div>
+          <p className="text-xs text-zinc-500">Le tracking des tokens sera disponible prochainement. En attendant, consulte ton dashboard Anthropic :</p>
+          <a href="https://console.anthropic.com/settings/usage" target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 mt-2">
+            console.anthropic.com/usage →
+          </a>
         </div>
-
-        {/* Activity Log */}
-        <ActivityLog logs={logs} maxItems={20} />
       </div>
     </div>
   );
