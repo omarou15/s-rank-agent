@@ -2,12 +2,13 @@
 import { useState, useRef, useEffect } from "react";
 import { ArrowUp, Paperclip, X, FileText, Image, FileCode, Loader2 } from "lucide-react";
 
-interface UploadedFile { name: string; size: number; path: string; type: string; }
+export interface UploadedFile { name: string; size: number; path: string; type: string; base64?: string; }
 interface ChatInputProps { onSend: (message: string, files?: UploadedFile[]) => void; disabled?: boolean; placeholder?: string; }
 
 function getCat(n: string) { const e = n.split(".").pop()?.toLowerCase() || ""; if (["png","jpg","jpeg","gif","svg","webp"].includes(e)) return "image"; if (["ts","tsx","js","jsx","py","sh","html","css","json","md","csv","sql"].includes(e)) return "code"; return "default"; }
 function fmtSize(b: number) { if (b < 1024) return b + " B"; if (b < 1048576) return (b/1024).toFixed(1) + " KB"; return (b/1048576).toFixed(1) + " MB"; }
 const ICONS: Record<string, any> = { image: Image, code: FileCode, default: FileText };
+const IMG_EXTS = ["png","jpg","jpeg","gif","svg","webp"];
 
 export function ChatInput({ onSend, disabled, placeholder = "Demande quelque chose..." }: ChatInputProps) {
   const [value, setValue] = useState("");
@@ -33,8 +34,12 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
     try {
       const b64 = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res((r.result as string).split(",")[1] || ""); r.onerror = rej; r.readAsDataURL(file); });
       const path = `/home/agent/uploads/${file.name}`;
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      const isImage = IMG_EXTS.includes(ext);
+
+      // Upload to VPS
       const r = await fetch("/api/files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path, content: b64, encoding: "base64" }) });
-      if (r.ok) setFiles(p => [...p, { name: file.name, size: file.size, path, type: file.type }]);
+      if (r.ok) setFiles(p => [...p, { name: file.name, size: file.size, path, type: file.type, base64: isImage ? b64 : undefined }]);
     } catch {} finally { setUploading(false); }
   };
 
@@ -47,9 +52,25 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}>
 
-        {files.length > 0 && (
+        {/* Image previews */}
+        {files.some(f => f.base64) && (
+          <div className="flex gap-2 px-4 pt-3">
+            {files.filter(f => f.base64).map((f, i) => (
+              <div key={i} className="relative group">
+                <img src={`data:${f.type};base64,${f.base64}`} alt={f.name} className="w-16 h-16 object-cover rounded-xl border border-white/10" />
+                <button onClick={() => setFiles(p => p.filter(x => x.name !== f.name))}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-zinc-800 border border-white/10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <X size={10} className="text-zinc-300" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Non-image file chips */}
+        {files.filter(f => !f.base64).length > 0 && (
           <div className="flex flex-wrap gap-1.5 px-4 pt-3">
-            {files.map((f, i) => { const I = ICONS[getCat(f.name)]; return (
+            {files.filter(f => !f.base64).map((f, i) => { const I = ICONS[getCat(f.name)]; return (
               <div key={i} className="flex items-center gap-1.5 bg-white/5 rounded-lg px-2.5 py-1.5">
                 <I size={12} className="text-zinc-400" />
                 <span className="text-xs text-zinc-300 max-w-[120px] truncate">{f.name}</span>
@@ -65,7 +86,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Demande quelque cho
             className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors disabled:opacity-30">
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Paperclip size={16} />}
           </button>
-          <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => { if (e.target.files) Array.from(e.target.files).forEach(upload); e.target.value = ""; }} />
+          <input ref={fileRef} type="file" multiple accept="*/*" className="hidden" onChange={(e) => { if (e.target.files) Array.from(e.target.files).forEach(upload); e.target.value = ""; }} />
 
           <textarea ref={taRef} value={value} onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); } }}

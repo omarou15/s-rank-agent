@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ChatInput } from "@/components/chat/chat-input";
+import { ChatInput, UploadedFile } from "@/components/chat/chat-input";
 import { useUser } from "@clerk/nextjs";
 import {
   Loader2, CheckCircle, XCircle, ChevronDown, ChevronRight,
@@ -25,6 +25,7 @@ interface Message {
 function cleanForDisplay(content: string): string {
   return content
     .replace(/\[EXEC:\w+\][\s\S]*?\[\/EXEC\]/g, "")
+    .replace(/\[ARTIFACT:[^\]]*\][\s\S]*?\[\/ARTIFACT\]/g, "")
     .replace(/\[MEMORY:[^\]]*\]/g, "")
     .replace(/\[CRON:[^\]]*\]/g, "")
     .replace(/\[FILE:[^\]]*\]/g, "")
@@ -33,9 +34,11 @@ function cleanForDisplay(content: string): string {
 
 // ── Check if content has active EXEC block being streamed (incomplete) ──
 function hasIncompleteExec(content: string): boolean {
-  const opens = (content.match(/\[EXEC:\w+\]/g) || []).length;
-  const closes = (content.match(/\[\/EXEC\]/g) || []).length;
-  return opens > closes;
+  const execOpens = (content.match(/\[EXEC:\w+\]/g) || []).length;
+  const execCloses = (content.match(/\[\/EXEC\]/g) || []).length;
+  const artOpens = (content.match(/\[ARTIFACT:[^\]]*\]/g) || []).length;
+  const artCloses = (content.match(/\[\/ARTIFACT\]/g) || []).length;
+  return execOpens > execCloses || artOpens > artCloses;
 }
 
 // ── Exec block component ──
@@ -139,6 +142,71 @@ function parseFileTags(content: string): string[] {
   let match;
   while ((match = regex.exec(content)) !== null) files.push(match[1].trim());
   return files;
+}
+
+// ── Parse ARTIFACT tags ──
+interface Artifact { title: string; html: string; }
+function parseArtifacts(content: string): Artifact[] {
+  const artifacts: Artifact[] = [];
+  const regex = /\[ARTIFACT:([^\]]*)\]\n?([\s\S]*?)\[\/ARTIFACT\]/g;
+  let match;
+  while ((match = regex.exec(content)) !== null) artifacts.push({ title: match[1].trim(), html: match[2].trim() });
+  return artifacts;
+}
+
+// ── Artifact renderer (iframe sandbox) ──
+function ArtifactView({ artifact }: { artifact: Artifact }) {
+  const [expanded, setExpanded] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    if (iframeRef.current) {
+      const doc = iframeRef.current.contentDocument;
+      if (doc) { doc.open(); doc.write(artifact.html); doc.close(); }
+    }
+  }, [artifact.html, expanded]);
+
+  return (
+    <div className="my-3 rounded-xl border border-white/10 overflow-hidden bg-[#0a0a0a]">
+      <div className="flex items-center justify-between px-3.5 py-2 bg-white/[0.03] border-b border-white/5">
+        <span className="text-xs font-medium text-zinc-400">{artifact.title || "Artifact"}</span>
+        <button onClick={() => setExpanded(!expanded)} className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors">
+          {expanded ? "Réduire" : "Agrandir"}
+        </button>
+      </div>
+      <iframe ref={iframeRef} sandbox="allow-scripts allow-same-origin"
+        className={`w-full border-0 bg-[#0a0a0a] transition-all ${expanded ? "h-[500px]" : "h-[350px]"}`}
+        title={artifact.title} />
+    </div>
+  );
+}
+
+// ── Inline image display (for generated charts/images) ──
+function InlineImage({ filepath }: { filepath: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const filename = filepath.split("/").pop() || "";
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/files/download?path=${encodeURIComponent(filepath)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.base64) {
+          const ext = filename.split(".").pop()?.toLowerCase() || "png";
+          const mime = ext === "svg" ? "image/svg+xml" : `image/${ext === "jpg" ? "jpeg" : ext}`;
+          setSrc(`data:${mime};base64,${data.base64}`);
+        }
+      } catch {}
+    })();
+  }, [filepath]);
+
+  if (!src) return null;
+  return (
+    <div className="my-2 rounded-xl overflow-hidden border border-white/5">
+      <img src={src} alt={filename} className="max-w-full max-h-[400px] object-contain mx-auto" />
+    </div>
+  );
 }
 
 // ── Render clean content ──
@@ -267,7 +335,7 @@ export default function ChatPage() {
 
   const saveApiKey = (key: string) => { setApiKey(key); localStorage.setItem("s-rank-api-key", key); setShowKeyInput(false); addSystemMessage("Clé API configurée ✓"); };
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, files?: UploadedFile[]) => {
     if (!content.trim() || streaming) return;
     if (!apiKey) { setShowKeyInput(true); return; }
 
@@ -279,7 +347,13 @@ export default function ChatPage() {
     const history = messages.filter(m => m.role !== "system").slice(-20).map(m => ({ role: m.role, content: m.content }));
 
     try {
-      const res = await fetch("/api/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, apiKey, history, trustLevel: getTrustLevel(), memoryContext: getMemoryContext(), installedSkills: getInstalledSkills(), activeConnectors: getActiveConnectors(), userDir: USER_DIR }) });
+      // Collect images from uploaded files
+      const imageData = files?.filter(f => f.base64).map(f => ({
+        base64: f.base64,
+        mediaType: f.type || "image/jpeg",
+      })) || [];
+
+      const res = await fetch("/api/chat/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, apiKey, history, trustLevel: getTrustLevel(), memoryContext: getMemoryContext(), installedSkills: getInstalledSkills(), activeConnectors: getActiveConnectors(), userDir: USER_DIR, images: imageData.length > 0 ? imageData : undefined }) });
       if (!res.ok) { const err = await res.json(); setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: `Erreur: ${err.error || "Échec"}`, status: "error" } : m)); setStreaming(false); return; }
 
       const reader = res.body?.getReader();
@@ -408,7 +482,14 @@ export default function ChatPage() {
                             <>
                               {renderContent(msg.content)}
                               {msg.execBlocks?.map((block, bi) => <ExecBlockView key={bi} block={block} />)}
-                              {parseFileTags(msg.content).map((fp, fi) => <FileCard key={fi} filepath={fp} />)}
+                              {parseArtifacts(msg.content).map((art, ai) => <ArtifactView key={ai} artifact={art} />)}
+                              {parseFileTags(msg.content).map((fp, fi) => {
+                                const ext = fp.split(".").pop()?.toLowerCase() || "";
+                                const isImage = ["png","jpg","jpeg","gif","svg","webp"].includes(ext);
+                                return isImage
+                                  ? <InlineImage key={fi} filepath={fp} />
+                                  : <FileCard key={fi} filepath={fp} />;
+                              })}
                             </>
                           )}
                         </>
