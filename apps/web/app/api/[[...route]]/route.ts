@@ -132,9 +132,48 @@ app.get("/skills/marketplace", (c) => c.json({ skills: [
   { id: "5", name: "API Builder", slug: "api-builder", description: "APIs REST et GraphQL", category: "development", author: "S-Rank Official", isOfficial: true, installs: 1420, rating: 46 },
 ] }));
 app.get("/skills/installed", (c) => c.json({ skills: [] }));
-app.get("/chat/conversations", (c) => c.json({ conversations: [] }));
+
+// ── Conversations (proxy to VPS) ──
+app.get("/conversations", async (c) => {
+  try { return c.json(await vps("/conversations")); }
+  catch { return c.json({ conversations: [] }); }
+});
+app.get("/conversations/:id", async (c) => {
+  try { return c.json(await vps(`/conversations/${c.req.param("id")}`)); }
+  catch { return c.json({ error: "Not found" }, 404); }
+});
+app.post("/conversations", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/conversations", { method: "POST", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.put("/conversations/:id", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps(`/conversations/${c.req.param("id")}`, { method: "PUT", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.delete("/conversations/:id", async (c) => {
+  try { return c.json(await vps(`/conversations/${c.req.param("id")}`, { method: "DELETE" })); }
+  catch { return c.json({ success: false }); }
+});
+
+// ── Folders ──
+app.get("/folders", async (c) => {
+  try { return c.json(await vps("/folders")); }
+  catch { return c.json({ folders: [{ id: "default", name: "Général" }] }); }
+});
+app.post("/folders", async (c) => {
+  const body = await c.req.json();
+  try { return c.json(await vps("/folders", { method: "POST", body: JSON.stringify(body) })); }
+  catch (e: any) { return c.json({ error: e.message }, 500); }
+});
+app.delete("/folders/:id", async (c) => {
+  try { return c.json(await vps(`/folders/${c.req.param("id")}`, { method: "DELETE" })); }
+  catch { return c.json({ success: false }); }
+});
 
 export const GET = handle(app);
 export const POST = handle(app);
+export const PUT = handle(app);
 export const PATCH = handle(app);
 export const DELETE = handle(app);
