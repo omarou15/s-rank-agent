@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatInput } from "@/components/chat/chat-input";
+import { useUser } from "@clerk/nextjs";
 import {
   Bot, User, Key, Loader2, CheckCircle, XCircle,
   ChevronDown, ChevronRight, ExternalLink, Settings, Zap, Search,
@@ -206,6 +207,8 @@ function SystemMessage({ msg }: { msg: Message }) {
 
 // ── Main Chat Page ──
 export default function ChatPage() {
+  const { user } = useUser();
+  const uid = user?.id || "default";
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [apiKey, setApiKey] = useState("");
@@ -214,7 +217,9 @@ export default function ChatPage() {
   const [showSearch, setShowSearch] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
-  const STORAGE_KEY = "s-rank-chat-messages";
+  const STORAGE_KEY = `s-rank-chat-${uid}`;
+  const API_KEY_STORAGE = `s-rank-api-key`;
+  const USER_DIR = `/home/agent/users/${uid}`;
 
   // ── Warn user if leaving while agent is working ──
   useEffect(() => {
@@ -270,7 +275,7 @@ export default function ChatPage() {
     };
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+  }, [uid]);
 
   // ── Persist messages ──
   useEffect(() => {
@@ -279,7 +284,7 @@ export default function ChatPage() {
       const toSave = messages.filter(m => m.status === "complete" || m.status === "error").slice(-200);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     }
-  }, [messages]);
+  }, [messages, STORAGE_KEY]);
 
   // ── Auto scroll ──
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -470,6 +475,7 @@ export default function ChatPage() {
           memoryContext: getMemoryContext(),
           installedSkills: getInstalledSkills(),
           activeConnectors: getActiveConnectors(),
+          userDir: USER_DIR,
         }),
       });
 

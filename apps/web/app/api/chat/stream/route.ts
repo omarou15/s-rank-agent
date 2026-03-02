@@ -2,12 +2,13 @@ export const runtime = "edge";
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { content, apiKey, model, history, trustLevel, memoryContext, installedSkills, activeConnectors } = body;
+  const { content, apiKey, model, history, trustLevel, memoryContext, installedSkills, activeConnectors, userDir } = body;
 
   if (!apiKey) return Response.json({ error: "API key required." }, { status: 400 });
   if (!content) return Response.json({ error: "Message required." }, { status: 400 });
 
   const trust = trustLevel || 2;
+  const userHome = userDir || "/home/agent";
 
   const trustBehavior: Record<number, string> = {
     1: `AUTONOMIE NIVEAU 1 (Supervision totale):
@@ -75,13 +76,14 @@ Utilise \`\`\` UNIQUEMENT pour montrer du code que l'utilisateur veut VOIR.
 
 APPLICATIONS WEB — PREVIEW LIVE:
 Quand on te demande une app (HTML, web app, dashboard, jeu, outil interactif...) :
-1. Crée les fichiers dans /home/agent/apps/[nom-app]/
+1. Crée les fichiers dans ${userHome}/apps/[nom-app]/
 2. Tue l'ancien serveur et lance un nouveau :
    [EXEC:bash]
-   fuser -k 8080/tcp 2>/dev/null; cd /home/agent/apps/[nom-app] && nohup python3 -m http.server 8080 > /dev/null 2>&1 &
+   mkdir -p ${userHome}/apps/[nom-app]
+   fuser -k 8080/tcp 2>/dev/null; cd ${userHome}/apps/[nom-app] && nohup python3 -m http.server 8080 > /dev/null 2>&1 &
    [/EXEC]
 3. Indique le lien preview : "🌐 **Preview live** : http://46.225.103.230:8080"
-4. Ajoute aussi [FILE:/home/agent/apps/[nom-app]/index.html] pour le téléchargement
+4. Ajoute aussi [FILE:${userHome}/apps/[nom-app]/index.html] pour le téléchargement
 
 Pour React/Vite : installe, build, et sers le dossier dist/ :
    npm create vite@latest [nom] -- --template react → npm install → npm run build → sers dist/ sur port 8080
@@ -90,14 +92,16 @@ TOUJOURS donner un lien cliquable quand tu crées une app web. C'est la feature 
 
 CAPACITÉS:
 - CODE: Python 3, Node.js, Bash — exécution directe sur le serveur
-- FICHIERS: Lire, écrire, organiser dans /home/agent/
+- FICHIERS: Lire, écrire, organiser dans ${userHome}/
 - PREVIEW LIVE: Servir des apps web sur le serveur (ports 8080-8090) avec lien cliquable
 - EMAIL: Envoyer des emails via /email/send {to, subject, body}
 - WALLET: Solde prépayé. Vérifie /wallet avant de dépenser.
 - WEB: Scraper avec Python (requests + beautifulsoup4)
-- FICHIERS JOINTS: Les fichiers uploadés sont dans /home/agent/uploads/
+- FICHIERS JOINTS: Les fichiers uploadés sont dans ${userHome}/uploads/
 - CRONS: Tâches récurrentes via [CRON:nom|schedule|commande]
 - FICHIERS CRÉÉS: Ajoute TOUJOURS [FILE:/chemin] après le bloc [EXEC] qui crée un fichier. L'utilisateur le télécharge depuis le chat.
+
+IMPORTANT: Ton espace de travail est ${userHome}/. Crée TOUS tes fichiers dans ce dossier. Commence toujours par mkdir -p ${userHome} si nécessaire.
 ${skillsPrompt}
 ${connectorsPrompt}
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
+import { PaywallGate } from "./paywall-gate";
 
 const NAV_ITEMS = [
   { href: "/agent", icon: "🤖", label: "Mon Agent" },
@@ -134,7 +135,7 @@ export function ResponsiveShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-hidden">{children}</main>
+        <main className="flex-1 overflow-hidden"><PaywallGate>{children}</PaywallGate></main>
       </div>
     </div>
   );
