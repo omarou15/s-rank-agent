@@ -66,12 +66,12 @@ export async function POST(req: NextRequest) {
         
         const fileRes = await fetch(`${GITHUB_API_BASE}/repos/${fileRepo}/contents/${path}`, { headers: githubHeaders });
         const fileData = await fileRes.json();
-        const content = fileData.content ? atob(fileData.content) : null;
-        return NextResponse.json(createMCPResponse(true, { ...fileData, decoded_content: content }));
+        const fileContent = fileData.content ? atob(fileData.content) : null;
+        return NextResponse.json(createMCPResponse(true, { ...fileData, decoded_content: fileContent }));
 
       case "commit":
-        const { repo: commitRepo, path: commitPath, content, message, branch = "main" } = params;
-        if (!commitRepo || !commitPath || !content || !message) {
+        const { repo: commitRepo, path: commitPath, content: commitContent, message, branch = "main" } = params;
+        if (!commitRepo || !commitPath || !commitContent || !message) {
           throw new Error("repo, path, content et message requis");
         }
 
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
 
         const commitData: any = {
           message,
-          content: btoa(content),
+          content: btoa(commitContent),
           branch
         };
         if (sha) commitData.sha = sha;
