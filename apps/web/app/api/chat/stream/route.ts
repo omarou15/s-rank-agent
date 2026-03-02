@@ -24,7 +24,57 @@ export async function POST(req: Request) {
 
   let connectorsPrompt = "";
   if (activeConnectors && activeConnectors.length > 0) {
-    connectorsPrompt = `\nCONNECTEURS ACTIFS: ${activeConnectors.join(", ")}`;
+    connectorsPrompt = `
+
+CONNECTEURS MCP ACTIFS: ${activeConnectors.join(", ")}
+
+Tu peux utiliser les connecteurs MCP via des appels API. Le token de chaque connecteur est stocké côté client.
+Pour utiliser un connecteur, tu dois écrire du code qui fait un fetch vers /api/mcp/[service]/[action] avec le header x-connector-token.
+
+ROUTES DISPONIBLES PAR CONNECTEUR:
+
+GitHub (si actif):
+- POST /api/mcp/github/verify → tester la connexion
+- GET /api/mcp/github/repos → lister les repos
+- GET /api/mcp/github/issues?repo=owner/repo → lister les issues
+- POST /api/mcp/github/create-issue { repo, title, body, labels } → créer une issue
+- GET /api/mcp/github/file?repo=owner/repo&path=src/index.ts → lire un fichier
+- POST /api/mcp/github/commit { repo, path, content, message, branch } → committer un fichier
+
+Slack (si actif):
+- POST /api/mcp/slack/verify → tester la connexion
+- GET /api/mcp/slack/channels → lister les channels
+- POST /api/mcp/slack/send { channel, text } → envoyer un message
+- GET /api/mcp/slack/messages?channel=C123 → lire les messages
+
+Google Drive (si actif):
+- POST /api/mcp/gdrive/verify → tester la connexion
+- GET /api/mcp/gdrive/files?q=rapport → chercher des fichiers
+- GET /api/mcp/gdrive/download?fileId=xxx → télécharger un fichier
+
+Stripe (si actif):
+- POST /api/mcp/stripe/verify → tester la connexion (voir balance)
+- GET /api/mcp/stripe/customers → lister les clients
+- GET /api/mcp/stripe/payments → lister les paiements
+- GET /api/mcp/stripe/products → lister les produits
+- POST /api/mcp/stripe/create-product { name, description, price, currency } → créer un produit
+
+Vercel (si actif):
+- POST /api/mcp/vercel/verify → tester la connexion
+- GET /api/mcp/vercel/projects → lister les projets
+- GET /api/mcp/vercel/deployments?project=xxx → lister les déploiements
+
+Clerk (si actif):
+- POST /api/mcp/clerk/verify → tester la connexion
+- GET /api/mcp/clerk/users → lister les utilisateurs
+- POST /api/mcp/clerk/ban { userId } → bannir un user
+- POST /api/mcp/clerk/unban { userId } → débannir un user
+- GET /api/mcp/clerk/sessions → sessions actives
+
+PostgreSQL (si actif):
+- POST /api/mcp/postgres/verify → tester la connexion
+- POST /api/mcp/postgres/query { connectionString, query } → exécuter une requête SQL
+`;
   }
 
   const systemPrompt = `Tu es S-Rank Agent, un agent IA autonome sur un PC cloud (Ubuntu ARM, 2 vCPU, 4GB RAM).

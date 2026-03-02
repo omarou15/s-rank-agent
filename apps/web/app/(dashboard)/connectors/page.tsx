@@ -82,28 +82,53 @@ export default function ConnectorsPage() {
   };
 
   const saveToken = (id: string, token: string) => {
-    const updated = connectors.map((c) => c.id === id ? { ...c, token, status: token ? "connected" : "disconnected", enabled: !!token } : c);
+    const updated = connectors.map((c) => c.id === id ? { ...c, token, status: token ? "testing" : "disconnected", enabled: !!token } : c);
     save(updated);
     const active = updated.filter(c => c.enabled && c.status === "connected").map(c => `${c.name} (${c.description})`);
     localStorage.setItem("s-rank-active-connectors", JSON.stringify(active));
-    const conn = connectors.find(c => c.id === id);
-    if (conn && token) {
-      localStorage.setItem("s-rank-config-event", JSON.stringify({
-        type: "connector_configured",
-        message: `${conn.name} configuré et prêt ✓`,
-        ts: Date.now(),
-      }));
-    }
     setEditingId(null);
+    // Auto-verify the token
+    if (token) {
+      setTimeout(() => testConnector(id), 100);
+    }
   };
 
   const testConnector = async (id: string) => {
     setTestingId(id);
-    // Simulate test — in production this would call the VPS API
-    await new Promise((r) => setTimeout(r, 1500));
     const c = connectors.find((c) => c.id === id);
-    const ok = !!(c?.token);
-    save(connectors.map((c) => c.id === id ? { ...c, status: ok ? "connected" : "error" } : c));
+    if (!c?.token) { setTestingId(null); return; }
+
+    // Map connector id to MCP verify endpoint
+    const verifyEndpoints: Record<string, string> = {
+      github: "/api/mcp/github/verify",
+      slack: "/api/mcp/slack/verify",
+      gdrive: "/api/mcp/gdrive/verify",
+      stripe: "/api/mcp/stripe/verify",
+      vercel: "/api/mcp/vercel/verify",
+      clerk: "/api/mcp/clerk/verify",
+      postgres: "/api/mcp/postgres/verify",
+    };
+
+    const endpoint = verifyEndpoints[id];
+    let ok = false;
+
+    if (endpoint) {
+      try {
+        const r = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-connector-token": c.token },
+        });
+        const data = await r.json();
+        ok = data.ok === true;
+      } catch {
+        ok = false;
+      }
+    } else {
+      // Unknown connector, just check token exists
+      ok = !!c.token;
+    }
+
+    save(connectors.map((conn) => conn.id === id ? { ...conn, status: ok ? "connected" : "error" } : conn));
     setTestingId(null);
   };
 

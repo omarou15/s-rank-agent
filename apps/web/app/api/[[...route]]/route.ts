@@ -245,6 +245,280 @@ app.get("/monitoring/dashboard", async (c) => {
 app.get("/monitoring/usage", (c) => c.json({ period: "month", usage: { totalInput: 0, totalOutput: 0, totalCost: 0, messageCount: 0 } }));
 app.get("/monitoring/logs", (c) => c.json({ logs: [] }));
 app.get("/connectors", (c) => c.json({ connectors: [] }));
+
+// ── MCP CONNECTORS — Real API proxy routes ──
+
+// Helper: get connector token from request header
+function getToken(c: any): string { return c.req.header("x-connector-token") || ""; }
+
+// ── GITHUB ──
+app.post("/mcp/github/verify", async (c) => {
+  const token = getToken(c);
+  if (!token) return c.json({ ok: false, error: "No token" }, 400);
+  try {
+    const r = await fetch("https://api.github.com/user", { headers: { Authorization: `Bearer ${token}`, "User-Agent": "S-Rank-Agent" } });
+    if (!r.ok) return c.json({ ok: false, error: "Invalid token" });
+    const user = await r.json();
+    return c.json({ ok: true, user: { login: user.login, name: user.name, avatar: user.avatar_url } });
+  } catch (e: any) { return c.json({ ok: false, error: e.message }); }
+});
+
+app.get("/mcp/github/repos", async (c) => {
+  const token = getToken(c);
+  const r = await fetch("https://api.github.com/user/repos?sort=updated&per_page=30", { headers: { Authorization: `Bearer ${token}`, "User-Agent": "S-Rank-Agent" } });
+  const repos = await r.json();
+  return c.json({ repos: Array.isArray(repos) ? repos.map((r: any) => ({ name: r.full_name, url: r.html_url, description: r.description, language: r.language, stars: r.stargazers_count, updated: r.updated_at })) : [] });
+});
+
+app.get("/mcp/github/issues", async (c) => {
+  const token = getToken(c);
+  const repo = c.req.query("repo") || "";
+  const r = await fetch(`https://api.github.com/repos/${repo}/issues?state=open&per_page=20`, { headers: { Authorization: `Bearer ${token}`, "User-Agent": "S-Rank-Agent" } });
+  const issues = await r.json();
+  return c.json({ issues: Array.isArray(issues) ? issues.map((i: any) => ({ number: i.number, title: i.title, state: i.state, user: i.user?.login, created: i.created_at, url: i.html_url })) : [] });
+});
+
+app.post("/mcp/github/create-issue", async (c) => {
+  const token = getToken(c);
+  const { repo, title, body, labels } = await c.req.json();
+  const r = await fetch(`https://api.github.com/repos/${repo}/issues`, {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "User-Agent": "S-Rank-Agent", "Content-Type": "application/json" },
+    body: JSON.stringify({ title, body, labels: labels || [] })
+  });
+  const issue = await r.json();
+  return c.json({ ok: r.ok, issue: { number: issue.number, url: issue.html_url } });
+});
+
+app.get("/mcp/github/file", async (c) => {
+  const token = getToken(c);
+  const repo = c.req.query("repo") || "";
+  const path = c.req.query("path") || "";
+  const r = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, { headers: { Authorization: `Bearer ${token}`, "User-Agent": "S-Rank-Agent" } });
+  const data = await r.json();
+  if (data.content) {
+    const content = Buffer.from(data.content, "base64").toString("utf-8");
+    return c.json({ ok: true, path: data.path, content, size: data.size });
+  }
+  if (Array.isArray(data)) return c.json({ ok: true, type: "dir", files: data.map((f: any) => ({ name: f.name, type: f.type, path: f.path, size: f.size })) });
+  return c.json({ ok: false, error: "Not found" });
+});
+
+app.post("/mcp/github/commit", async (c) => {
+  const token = getToken(c);
+  const { repo, path, content, message, branch } = await c.req.json();
+  // Get current file SHA if exists
+  let sha: string | undefined;
+  try {
+    const existing = await fetch(`https://api.github.com/repos/${repo}/contents/${path}?ref=${branch || "main"}`, { headers: { Authorization: `Bearer ${token}`, "User-Agent": "S-Rank-Agent" } });
+    if (existing.ok) { const d = await existing.json(); sha = d.sha; }
+  } catch {}
+  const r = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+    method: "PUT", headers: { Authorization: `Bearer ${token}`, "User-Agent": "S-Rank-Agent", "Content-Type": "application/json" },
+    body: JSON.stringify({ message: message || `Update ${path}`, content: Buffer.from(content).toString("base64"), branch: branch || "main", ...(sha ? { sha } : {}) })
+  });
+  return c.json({ ok: r.ok, ...(await r.json()) });
+});
+
+// ── SLACK ──
+app.post("/mcp/slack/verify", async (c) => {
+  const token = getToken(c);
+  try {
+    const r = await fetch("https://slack.com/api/auth.test", { headers: { Authorization: `Bearer ${token}` } });
+    const data = await r.json();
+    return c.json({ ok: data.ok, team: data.team, user: data.user });
+  } catch (e: any) { return c.json({ ok: false, error: e.message }); }
+});
+
+app.get("/mcp/slack/channels", async (c) => {
+  const token = getToken(c);
+  const r = await fetch("https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=50", { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  return c.json({ ok: data.ok, channels: (data.channels || []).map((ch: any) => ({ id: ch.id, name: ch.name, topic: ch.topic?.value, members: ch.num_members })) });
+});
+
+app.post("/mcp/slack/send", async (c) => {
+  const token = getToken(c);
+  const { channel, text, blocks } = await c.req.json();
+  const r = await fetch("https://slack.com/api/chat.postMessage", {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ channel, text, blocks })
+  });
+  const data = await r.json();
+  return c.json({ ok: data.ok, ts: data.ts, channel: data.channel });
+});
+
+app.get("/mcp/slack/messages", async (c) => {
+  const token = getToken(c);
+  const channel = c.req.query("channel") || "";
+  const r = await fetch(`https://slack.com/api/conversations.history?channel=${channel}&limit=20`, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  return c.json({ ok: data.ok, messages: (data.messages || []).map((m: any) => ({ user: m.user, text: m.text, ts: m.ts, type: m.type })) });
+});
+
+// ── GOOGLE DRIVE ──
+app.post("/mcp/gdrive/verify", async (c) => {
+  const token = getToken(c);
+  try {
+    const r = await fetch("https://www.googleapis.com/drive/v3/about?fields=user", { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return c.json({ ok: false, error: "Invalid token" });
+    const data = await r.json();
+    return c.json({ ok: true, user: data.user });
+  } catch (e: any) { return c.json({ ok: false, error: e.message }); }
+});
+
+app.get("/mcp/gdrive/files", async (c) => {
+  const token = getToken(c);
+  const q = c.req.query("q") || "";
+  const query = q ? `&q=name contains '${q}'` : "";
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files?pageSize=30&fields=files(id,name,mimeType,size,modifiedTime,webViewLink)${query}`, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  return c.json({ ok: true, files: data.files || [] });
+});
+
+app.get("/mcp/gdrive/download", async (c) => {
+  const token = getToken(c);
+  const fileId = c.req.query("fileId") || "";
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${token}` } });
+  const content = await r.text();
+  return c.json({ ok: true, content });
+});
+
+// ── STRIPE ──
+app.post("/mcp/stripe/verify", async (c) => {
+  const token = getToken(c);
+  try {
+    const r = await fetch("https://api.stripe.com/v1/balance", { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return c.json({ ok: false, error: "Invalid key" });
+    const data = await r.json();
+    return c.json({ ok: true, balance: data.available?.map((b: any) => ({ amount: b.amount / 100, currency: b.currency })) });
+  } catch (e: any) { return c.json({ ok: false, error: e.message }); }
+});
+
+app.get("/mcp/stripe/customers", async (c) => {
+  const token = getToken(c);
+  const r = await fetch("https://api.stripe.com/v1/customers?limit=20", { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  return c.json({ ok: true, customers: (data.data || []).map((cu: any) => ({ id: cu.id, email: cu.email, name: cu.name, created: cu.created })) });
+});
+
+app.get("/mcp/stripe/payments", async (c) => {
+  const token = getToken(c);
+  const r = await fetch("https://api.stripe.com/v1/payment_intents?limit=20", { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  return c.json({ ok: true, payments: (data.data || []).map((p: any) => ({ id: p.id, amount: p.amount / 100, currency: p.currency, status: p.status, created: p.created })) });
+});
+
+app.get("/mcp/stripe/products", async (c) => {
+  const token = getToken(c);
+  const r = await fetch("https://api.stripe.com/v1/products?limit=20", { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  return c.json({ ok: true, products: (data.data || []).map((p: any) => ({ id: p.id, name: p.name, active: p.active, description: p.description })) });
+});
+
+app.post("/mcp/stripe/create-product", async (c) => {
+  const token = getToken(c);
+  const { name, description, price, currency } = await c.req.json();
+  // Create product
+  const pr = await fetch("https://api.stripe.com/v1/products", {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ name, description: description || "" })
+  });
+  const product = await pr.json();
+  if (!pr.ok) return c.json({ ok: false, error: product.error?.message });
+  // Create price
+  const pp = await fetch("https://api.stripe.com/v1/prices", {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ product: product.id, unit_amount: String(Math.round(price * 100)), currency: currency || "eur" })
+  });
+  const priceObj = await pp.json();
+  return c.json({ ok: true, product: { id: product.id, name: product.name }, price: { id: priceObj.id, amount: price } });
+});
+
+// ── VERCEL ──
+app.post("/mcp/vercel/verify", async (c) => {
+  const token = getToken(c);
+  try {
+    const r = await fetch("https://api.vercel.com/v2/user", { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return c.json({ ok: false, error: "Invalid token" });
+    const data = await r.json();
+    return c.json({ ok: true, user: { name: data.user?.name, email: data.user?.email, username: data.user?.username } });
+  } catch (e: any) { return c.json({ ok: false, error: e.message }); }
+});
+
+app.get("/mcp/vercel/projects", async (c) => {
+  const token = getToken(c);
+  const r = await fetch("https://api.vercel.com/v9/projects", { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  return c.json({ ok: true, projects: (data.projects || []).map((p: any) => ({ id: p.id, name: p.name, framework: p.framework, url: p.latestDeployments?.[0]?.url })) });
+});
+
+app.get("/mcp/vercel/deployments", async (c) => {
+  const token = getToken(c);
+  const project = c.req.query("project") || "";
+  const q = project ? `?projectId=${project}&limit=10` : "?limit=10";
+  const r = await fetch(`https://api.vercel.com/v6/deployments${q}`, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  return c.json({ ok: true, deployments: (data.deployments || []).map((d: any) => ({ id: d.uid, url: d.url, state: d.state, created: d.created, source: d.source })) });
+});
+
+// ── CLERK ──
+app.post("/mcp/clerk/verify", async (c) => {
+  const token = getToken(c);
+  try {
+    const r = await fetch("https://api.clerk.com/v1/users?limit=1", { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return c.json({ ok: false, error: "Invalid key" });
+    return c.json({ ok: true });
+  } catch (e: any) { return c.json({ ok: false, error: e.message }); }
+});
+
+app.get("/mcp/clerk/users", async (c) => {
+  const token = getToken(c);
+  const r = await fetch("https://api.clerk.com/v1/users?limit=30&order_by=-created_at", { headers: { Authorization: `Bearer ${token}` } });
+  const users = await r.json();
+  return c.json({ ok: true, users: Array.isArray(users) ? users.map((u: any) => ({ id: u.id, email: u.email_addresses?.[0]?.email_address, firstName: u.first_name, lastName: u.last_name, createdAt: u.created_at, lastSignIn: u.last_sign_in_at, banned: u.banned })) : [] });
+});
+
+app.post("/mcp/clerk/ban", async (c) => {
+  const token = getToken(c);
+  const { userId } = await c.req.json();
+  const r = await fetch(`https://api.clerk.com/v1/users/${userId}/ban`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+  return c.json({ ok: r.ok });
+});
+
+app.post("/mcp/clerk/unban", async (c) => {
+  const token = getToken(c);
+  const { userId } = await c.req.json();
+  const r = await fetch(`https://api.clerk.com/v1/users/${userId}/unban`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+  return c.json({ ok: r.ok });
+});
+
+app.get("/mcp/clerk/sessions", async (c) => {
+  const token = getToken(c);
+  const r = await fetch("https://api.clerk.com/v1/sessions?limit=30&status=active", { headers: { Authorization: `Bearer ${token}` } });
+  const data = await r.json();
+  return c.json({ ok: true, sessions: Array.isArray(data) ? data.map((s: any) => ({ id: s.id, userId: s.user_id, status: s.status, lastActiveAt: s.last_active_at, expireAt: s.expire_at })) : [] });
+});
+
+// ── POSTGRESQL (direct query via VPS) ──
+app.post("/mcp/postgres/verify", async (c) => {
+  const token = getToken(c); // connection string
+  if (!token.startsWith("postgresql://")) return c.json({ ok: false, error: "Invalid connection string" });
+  try {
+    const r = await vps("/exec", { method: "POST", body: JSON.stringify({ command: `psql "${token}" -c "SELECT version();" 2>&1 | head -3` }) });
+    return c.json({ ok: true, result: r });
+  } catch (e: any) { return c.json({ ok: false, error: e.message }); }
+});
+
+app.post("/mcp/postgres/query", async (c) => {
+  const { connectionString, query: sql } = await c.req.json();
+  if (!connectionString || !sql) return c.json({ ok: false, error: "Missing params" });
+  try {
+    // Execute SQL via VPS psql
+    const escaped = sql.replace(/"/g, '\\"');
+    const r = await vps("/exec", { method: "POST", body: JSON.stringify({ command: `psql "${connectionString}" -c "${escaped}" --csv 2>&1` }) });
+    return c.json({ ok: true, result: r });
+  } catch (e: any) { return c.json({ ok: false, error: e.message }); }
+});
 app.get("/skills/marketplace", (c) => c.json({ skills: [
   { id: "1", name: "Web Scraper", slug: "web-scraper", description: "Extraire des données de sites web", category: "data", author: "S-Rank Official", isOfficial: true, installs: 2340, rating: 48 },
   { id: "2", name: "Data Analyst", slug: "data-analyst", description: "Analyser CSV, Excel, bases de données", category: "data", author: "S-Rank Official", isOfficial: true, installs: 1890, rating: 47 },
