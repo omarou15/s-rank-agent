@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { cors } from "hono/cors";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const app = new Hono().basePath("/api");
 app.use("*", cors({ origin: "*", credentials: true }));
@@ -30,42 +31,7 @@ app.get("/health", async (c) => {
   }
 });
 
-// ── Chat Stream (BYOK) ──
-app.post("/chat/stream", async (c) => {
-  const body = await c.req.json();
-  const { content, apiKey, model, history } = body;
-  if (!apiKey) return c.json({ error: "API key required. Add your Claude API key in Settings." }, 400);
-  if (!content) return c.json({ error: "Message content required" }, 400);
-
-  const messages = [...(history || []), { role: "user", content }];
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: model || "claude-sonnet-4-20250514",
-      max_tokens: 8192,
-      stream: true,
-      system: `Tu es S-Rank Agent, un agent IA autonome avec un PC cloud (Ubuntu ARM, 2 vCPU, 4GB RAM).
-Tu peux exécuter du code (Python, Node.js, Bash), gérer des fichiers, et déployer des apps.
-Sois concis et orienté action. Utilise des blocs de code markdown.`,
-      messages,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    return c.json({ error: `Claude API error: ${error}` }, 400);
-  }
-
-  return new Response(response.body, {
-    headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
-  });
-});
+// ── Chat Stream → see /api/chat/stream/route.ts (Edge runtime) ──
 
 // ── Files (proxy to VPS) ──
 app.get("/files/list", async (c) => {
