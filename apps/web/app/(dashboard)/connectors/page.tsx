@@ -68,6 +68,14 @@ export default function ConnectorsPage() {
         message: nowEnabled ? `${conn.name} connecté ✓` : `${conn.name} déconnecté`,
         ts: Date.now(),
       }));
+      // Grant XP
+      if (nowEnabled) {
+        try {
+          const agent = JSON.parse(localStorage.getItem("s-rank-agent") || "{}");
+          if (agent.xp !== undefined) { agent.xp += 30; agent.totalConnectors = (agent.totalConnectors || 0) + 1; localStorage.setItem("s-rank-agent", JSON.stringify(agent)); }
+          localStorage.setItem("s-rank-xp-event", JSON.stringify({ amount: 30, reason: "connector", ts: Date.now() }));
+        } catch {}
+      }
     }
   };
 

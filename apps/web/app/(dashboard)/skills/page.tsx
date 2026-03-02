@@ -136,6 +136,12 @@ export default function SkillsPage() {
       ts: Date.now(),
     }));
     setInstalling(null);
+    // Grant XP
+    try {
+      const agent = JSON.parse(localStorage.getItem("s-rank-agent") || "{}");
+      if (agent.xp !== undefined) { agent.xp += 50; agent.totalSkills = (agent.totalSkills || 0) + 1; localStorage.setItem("s-rank-agent", JSON.stringify(agent)); }
+      localStorage.setItem("s-rank-xp-event", JSON.stringify({ amount: 50, reason: "skill", ts: Date.now() }));
+    } catch {}
   };
 
   const uninstallSkill = (id: string) => {

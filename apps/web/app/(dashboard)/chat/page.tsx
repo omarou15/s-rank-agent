@@ -257,7 +257,7 @@ export default function ChatPage() {
     localStorage.setItem("s-rank-task-event", JSON.stringify({ ...task, _ts: Date.now() }));
   };
 
-  // ── Update daily stats ──
+  // ── Update daily stats + Agent XP ──
   const updateStats = (success: boolean) => {
     try {
       const today = new Date().toISOString().slice(0, 10);
@@ -272,6 +272,16 @@ export default function ChatPage() {
         saved.push({ date: today, tasks: 1, success: success ? 1 : 0, errors: success ? 0 : 1, tokens: 500 });
       }
       localStorage.setItem("s-rank-stats", JSON.stringify(saved.slice(-30)));
+    } catch {}
+    // Grant XP to agent
+    try {
+      const agent = JSON.parse(localStorage.getItem("s-rank-agent") || "{}");
+      if (agent.xp !== undefined) {
+        agent.xp += success ? 10 : 3;
+        agent.totalTasks = (agent.totalTasks || 0) + 1;
+        localStorage.setItem("s-rank-agent", JSON.stringify(agent));
+        localStorage.setItem("s-rank-xp-event", JSON.stringify({ amount: success ? 10 : 3, reason: "task", ts: Date.now() }));
+      }
     } catch {}
   };
 

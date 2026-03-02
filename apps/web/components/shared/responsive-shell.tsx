@@ -7,6 +7,7 @@ import { UserButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
 
 const NAV_ITEMS = [
+  { href: "/agent", icon: "🤖", label: "Mon Agent" },
   { href: "/chat", icon: "💬", label: "Chat" },
   { href: "/terminal", icon: "⬛", label: "Terminal" },
   { href: "/files", icon: "📁", label: "Fichiers" },
