@@ -251,22 +251,32 @@ function AgentModeCard() {
 
 // ── Model Selector Card ──
 function ModelCard() {
+  const [backend, setBackend] = useState(() => {
+    try { return localStorage.getItem("s-rank-backend") || "api"; } catch { return "api"; }
+  });
+  const [selected, setSelected] = useState(() => {
+    try { return localStorage.getItem("s-rank-model") || "claude-sonnet-4-20250514"; } catch { return "claude-sonnet-4-20250514"; }
+  });
+  const [saved, setSaved] = useState(false);
+
   const models = [
     { id: "claude-sonnet-4-20250514", name: "Sonnet 4", desc: "Rapide & intelligent", cost: "3$/M tokens", badge: "Recommandé", color: "blue" },
     { id: "claude-haiku-3-5-20241022", name: "Haiku 3.5", desc: "Ultra rapide & économique", cost: "0.25$/M tokens", badge: "Économique", color: "emerald" },
     { id: "claude-opus-4-20250514", name: "Opus 4", desc: "Le plus puissant", cost: "15$/M tokens", badge: "Premium", color: "purple" },
   ];
 
-  const [selected, setSelected] = useState(() => {
-    try { return localStorage.getItem("s-rank-model") || "claude-sonnet-4-20250514"; } catch { return "claude-sonnet-4-20250514"; }
-  });
-  const [saved, setSaved] = useState(false);
+  const flash = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
+
+  const selectBackend = (b: string) => {
+    setBackend(b);
+    localStorage.setItem("s-rank-backend", b);
+    flash();
+  };
 
   const selectModel = (id: string) => {
     setSelected(id);
     localStorage.setItem("s-rank-model", id);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    flash();
   };
 
   return (
@@ -275,50 +285,95 @@ function ModelCard() {
         <div className="flex items-center gap-3">
           <Brain size={16} className="text-cyan-400" />
           <div>
-            <h2 className="text-sm font-medium text-white">Modèle IA</h2>
-            <p className="text-[11px] text-zinc-500">Choisis le modèle Claude pour l&apos;agent</p>
+            <h2 className="text-sm font-medium text-white">Backend IA</h2>
+            <p className="text-[11px] text-zinc-500">Comment l&apos;agent accède à Claude</p>
           </div>
         </div>
         {saved && <span className="text-[10px] text-emerald-400 flex items-center gap-1"><CheckCircle size={12} /> Sauvé</span>}
       </div>
-      <div className="space-y-2">
-        {models.map(m => {
-          const isActive = selected === m.id;
-          const borderColor = isActive
-            ? m.color === "blue" ? "border-blue-500/40 bg-blue-500/5"
-            : m.color === "emerald" ? "border-emerald-500/40 bg-emerald-500/5"
-            : "border-purple-500/40 bg-purple-500/5"
-            : "border-white/[0.06] hover:border-white/[0.12] bg-white/[0.01]";
-          const badgeColor = m.color === "blue" ? "bg-blue-500/10 text-blue-400"
-            : m.color === "emerald" ? "bg-emerald-500/10 text-emerald-400"
-            : "bg-purple-500/10 text-purple-400";
-          return (
-            <button key={m.id} onClick={() => selectModel(m.id)}
-              className={`w-full p-3.5 rounded-xl border text-left transition-all ${borderColor}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full border-2 ${isActive ? "border-white bg-white" : "border-zinc-600"}`} />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-white">{m.name}</span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${badgeColor}`}>{m.badge}</span>
+
+      {/* Backend Toggle */}
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => selectBackend("api")}
+          className={`flex-1 p-3 rounded-xl border text-left transition-all ${backend === "api" ? "border-blue-500/40 bg-blue-500/5" : "border-white/[0.06] hover:border-white/[0.12] bg-white/[0.01]"}`}>
+          <div className="flex items-center gap-2">
+            <Key size={14} className={backend === "api" ? "text-blue-400" : "text-zinc-500"} />
+            <div>
+              <span className="text-xs font-medium text-white">API Directe</span>
+              <p className="text-[10px] text-zinc-500">Clé API + paiement par token</p>
+            </div>
+          </div>
+        </button>
+        <button onClick={() => selectBackend("claude-code")}
+          className={`flex-1 p-3 rounded-xl border text-left transition-all ${backend === "claude-code" ? "border-purple-500/40 bg-purple-500/5" : "border-white/[0.06] hover:border-white/[0.12] bg-white/[0.01]"}`}>
+          <div className="flex items-center gap-2">
+            <Activity size={14} className={backend === "claude-code" ? "text-purple-400" : "text-zinc-500"} />
+            <div>
+              <span className="text-xs font-medium text-white">Claude Code</span>
+              <p className="text-[10px] text-zinc-500">Utilise ton abo Max — gratuit</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {backend === "claude-code" ? (
+        <div className="space-y-3">
+          <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/10">
+            <p className="text-[11px] text-purple-300 leading-relaxed">
+              ⚡ Claude Code utilise ton abonnement Max (130€/mois) — pas de coût API supplémentaire.
+            </p>
+          </div>
+          <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            <p className="text-[10px] text-zinc-400 leading-relaxed mb-2">📋 Installation sur ton VPS :</p>
+            <div className="bg-zinc-950 rounded-lg p-2.5 font-mono text-[10px] text-zinc-300 space-y-1">
+              <p><span className="text-emerald-400">$</span> npm install -g @anthropic-ai/claude-code</p>
+              <p><span className="text-emerald-400">$</span> claude login</p>
+              <p className="text-zinc-600"># Connecte-toi avec ton compte Max</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2">
+            {models.map(m => {
+              const isActive = selected === m.id;
+              const borderColor = isActive
+                ? m.color === "blue" ? "border-blue-500/40 bg-blue-500/5"
+                : m.color === "emerald" ? "border-emerald-500/40 bg-emerald-500/5"
+                : "border-purple-500/40 bg-purple-500/5"
+                : "border-white/[0.06] hover:border-white/[0.12] bg-white/[0.01]";
+              const badgeColor = m.color === "blue" ? "bg-blue-500/10 text-blue-400"
+                : m.color === "emerald" ? "bg-emerald-500/10 text-emerald-400"
+                : "bg-purple-500/10 text-purple-400";
+              return (
+                <button key={m.id} onClick={() => selectModel(m.id)}
+                  className={`w-full p-3.5 rounded-xl border text-left transition-all ${borderColor}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full border-2 ${isActive ? "border-white bg-white" : "border-zinc-600"}`} />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-white">{m.name}</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${badgeColor}`}>{m.badge}</span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">{m.desc}</p>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-zinc-500 mt-0.5">{m.desc}</p>
+                    <span className="text-[10px] text-zinc-500 font-mono">{m.cost}</span>
                   </div>
-                </div>
-                <span className="text-[10px] text-zinc-500 font-mono">{m.cost}</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-        <p className="text-[10px] text-zinc-500 leading-relaxed">
-          💡 <strong className="text-zinc-400">Haiku</strong> = idéal pour les tâches simples (scripts, fichiers).
-          <strong className="text-zinc-400"> Sonnet</strong> = meilleur rapport qualité/prix.
-          <strong className="text-zinc-400"> Opus</strong> = raisonnement complexe, projets lourds.
-        </p>
-      </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              💡 <strong className="text-zinc-400">Haiku</strong> = tâches simples.
+              <strong className="text-zinc-400"> Sonnet</strong> = meilleur rapport qualité/prix.
+              <strong className="text-zinc-400"> Opus</strong> = projets complexes.
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }

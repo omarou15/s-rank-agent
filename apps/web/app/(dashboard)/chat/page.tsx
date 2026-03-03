@@ -332,6 +332,7 @@ export default function ChatPage() {
   const [streaming, setStreaming] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [selectedModel, setSelectedModel] = useState(() => { try { return localStorage.getItem("s-rank-model") || "claude-sonnet-4-20250514"; } catch { return "claude-sonnet-4-20250514"; } });
+  const [backendMode, setBackendMode] = useState(() => { try { return localStorage.getItem("s-rank-backend") || "api"; } catch { return "api"; } });
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -464,6 +465,31 @@ export default function ChatPage() {
     msgId: string,
     images?: { base64: string; mediaType: string }[],
   ): Promise<string> => {
+    const currentBackend = (() => { try { return localStorage.getItem("s-rank-backend") || "api"; } catch { return "api"; } })();
+
+    // ── Claude Code backend (uses Max subscription) ──
+    if (currentBackend === "claude-code") {
+      const vpsHost = (() => { try { return localStorage.getItem("s-rank-vps-host") || ""; } catch { return ""; } })();
+      const vpsPass = (() => { try { return localStorage.getItem("s-rank-vps-password") || ""; } catch { return ""; } })();
+
+      const res = await fetch("/api/chat/claude-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, history, vpsHost, vpsPassword: vpsPass }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Échec Claude Code");
+      }
+
+      const data = await res.json();
+      const fullContent = data.content || "Pas de réponse";
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullContent } : m));
+      return fullContent;
+    }
+
+    // ── API Direct backend (uses API key) ──
     const res = await fetch("/api/chat/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -550,7 +576,8 @@ export default function ChatPage() {
 
   const sendMessage = useCallback(async (content: string, files?: UploadedFile[]) => {
     if (!content.trim() || streaming) return;
-    if (!apiKey) { setShowKeyInput(true); return; }
+    const currentBackend2 = (() => { try { return localStorage.getItem("s-rank-backend") || "api"; } catch { return "api"; } })();
+    if (!apiKey && currentBackend2 !== "claude-code") { setShowKeyInput(true); return; }
 
     const loopStart = Date.now();
     stopRef.current = false;
@@ -819,7 +846,7 @@ export default function ChatPage() {
           <button onClick={clearChat} className="p-2 text-white/25 hover:text-white/60 rounded-xl transition-colors hover:bg-white/[0.04]">
             <Plus size={15} />
           </button>
-          {!apiKey && (
+          {!apiKey && backendMode !== "claude-code" && (
             <button onClick={() => setShowKeyInput(true)} className="p-2 rounded-xl" style={{ color: "#FF9F0A" }}>
               <Key size={15} />
             </button>
@@ -939,7 +966,7 @@ export default function ChatPage() {
 
       {/* Input */}
       <div className="shrink-0 max-w-2xl mx-auto w-full">
-        <ChatInput onSend={sendMessage} disabled={streaming || !apiKey} loopActive={loopActive} onStop={() => { stopRef.current = true; }} />
+        <ChatInput onSend={sendMessage} disabled={streaming || (!apiKey && backendMode !== "claude-code")} loopActive={loopActive} onStop={() => { stopRef.current = true; }} />
       </div>
     </div>
   );
